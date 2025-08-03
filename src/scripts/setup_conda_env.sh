@@ -18,26 +18,18 @@ fi
 
 echo "✅ Conda found: $(conda --version)"
 
-# Create the environment
-echo ""
-echo "📦 Creating conda environment 'pkg-experiments'..."
-if conda env list | grep -q "pkg-experiments"; then
-    echo "⚠️  Environment 'pkg-experiments' already exists!"
-    read -p "Do you want to remove and recreate it? (y/N): " -n 1 -r
-    echo
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        echo "🗑️  Removing existing environment..."
-        conda env remove -n pkg-experiments
-    else
-        echo "❌ Aborted. Please remove the environment manually or use a different name."
-        exit 1
-    fi
+# Check if environment.yml exists
+if [ ! -f "config/environment.yml" ]; then
+    echo "❌ config/environment.yml not found"
+    echo "   Please make sure you're running this script from the project root directory"
+    exit 1
 fi
 
-echo "🔧 Creating environment from environment.yml..."
-conda env create -f environment.yml
+echo "📋 Creating conda environment from config/environment.yml..."
 
-echo ""
+# Create the environment
+conda env create -f config/environment.yml
+
 echo "✅ Environment created successfully!"
 
 # Provide activation instructions

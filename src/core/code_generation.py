@@ -1,7 +1,7 @@
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
 from transformers import BitsAndBytesConfig
-from prompt_utils import *
+from ..experiments.prompt_utils import *
 from tqdm import tqdm
 import re
 import json

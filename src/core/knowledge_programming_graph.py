@@ -4,8 +4,8 @@ import json
 import numpy as np
 import pandas as pd
 import uuid     
-from function_analyzer import * 
-from function_enhancer import *    
+from .function_analyzer import * 
+from .function_enhancer import *    
 
 
 def get_embeddings_from_dict(data,embedder_tokenizer,embedder_model):

@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Programming Knowledge Graph - Dataset Viewer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        
+        .stats {
+            background: white;
+            padding: 1rem;
+            margin: 1rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+        }
+        
+        .stat-item {
+            text-align: center;
+            padding: 1rem;
+        }
+        
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .stat-label {
+            color: #666;
+            font-size: 0.9rem;
+        }
+        
+        .controls {
+            background: white;
+            padding: 1rem;
+            margin: 1rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .search-box, .filter-select {
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+        
+        .search-box {
+            flex: 1;
+            min-width: 300px;
+        }
+        
+        .problem-card {
+            background: white;
+            margin: 1rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+            transition: transform 0.2s ease;
+        }
+        
+        .problem-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        }
+        
+        .problem-header {
+            background: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%);
+            color: white;
+            padding: 1rem;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .problem-header.mbpp {
+            background: linear-gradient(135deg, #fd79a8 0%, #e84393 100%);
+        }
+        
+        .problem-title {
+            font-size: 1.3rem;
+            font-weight: bold;
+        }
+        
+        .dataset-badge {
+            background: rgba(255,255,255,0.2);
+            padding: 0.2rem 0.5rem;
+            border-radius: 3px;
+            font-size: 0.8rem;
+            margin-left: 1rem;
+        }
+        
+        .expand-icon {
+            font-size: 1.2rem;
+            transition: transform 0.3s ease;
+        }
+        
+        .problem-content {
+            display: none;
+            padding: 1.5rem;
+        }
+        
+        .problem-content.expanded {
+            display: block;
+        }
+        
+        .problem-section {
+            margin-bottom: 2rem;
+        }
+        
+        .section-title {
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #2d3436;
+            margin-bottom: 0.5rem;
+            padding: 0.5rem;
+            background: #f8f9fa;
+            border-left: 4px solid #74b9ff;
+        }
+        
+        .code-block {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 6px;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 0.9rem;
+            line-height: 1.4;
+            overflow-x: auto;
+            margin: 0.5rem 0;
+        }
+        
+        .augmented-context {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            padding: 1rem;
+            margin: 0.5rem 0;
+        }
+        
+        .context-item {
+            margin-bottom: 1rem;
+            padding: 1rem;
+            background: white;
+            border-radius: 4px;
+            border-left: 4px solid #28a745;
+        }
+        
+        .relevance-score {
+            background: #28a745;
+            color: white;
+            padding: 0.2rem 0.5rem;
+            border-radius: 3px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+            display: inline-block;
+        }
+        
+        .no-results {
+            text-align: center;
+            padding: 3rem;
+            color: #666;
+            font-size: 1.2rem;
+        }
+        
+        .tab-container {
+            display: flex;
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 1rem;
+        }
+        
+        .tab {
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            border: none;
+            background: #f8f9fa;
+            border-top-left-radius: 4px;
+            border-top-right-radius: 4px;
+            margin-right: 2px;
+            transition: all 0.2s ease;
+        }
+        
+        .tab.active {
+            background: #74b9ff;
+            color: white;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .stats {
+                flex-direction: column;
+            }
+            
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .search-box {
+                min-width: auto;
+            }
+            
+            .problem-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Programming Knowledge Graph Dataset</h1>
+        <p>Interactive viewer for HumanEval and MBPP problems with augmented contexts</p>
+    </div>
+    
+    <div class="stats">
+        <div class="stat-item">
+            <div class="stat-number" id="total-problems">664</div>
+            <div class="stat-label">Total Problems</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-number">164</div>
+            <div class="stat-label">HumanEval Problems</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-number">500</div>
+            <div class="stat-label">MBPP Problems</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-number">3</div>
+            <div class="stat-label">Augmentation Types</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-number" id="visible-problems">664</div>
+            <div class="stat-label">Visible Problems</div>
+        </div>
+    </div>
+    
+    <div class="controls">
+        <input type="text" class="search-box" placeholder="Search problems by task ID or content..." id="search-input">
+        <select class="filter-select" id="dataset-filter">
+            <option value="all">All Datasets</option>
+            <option value="humaneval">HumanEval Only</option>
+            <option value="mbpp">MBPP Only</option>
+            <option value="function_wise">Function-wise (Voyage)</option>
+            <option value="block_wise">Block-wise (Voyage)</option>
+            <option value="bm25">BM25</option>
+        </select>
+        <button onclick="expandAll()" style="padding: 0.5rem 1rem; background: #74b9ff; color: white; border: none; border-radius: 4px; cursor: pointer;">Expand All</button>
+        <button onclick="collapseAll()" style="padding: 0.5rem 1rem; background: #636e72; color: white; border: none; border-radius: 4px; cursor: pointer;">Collapse All</button>
+    </div>
+    
+    <div id="problems-container">
+        <!-- Problems will be loaded here -->
+    </div>
+    
+    <div class="no-results" id="no-results" style="display: none;">
+        No problems match your search criteria.
+    </div>
+
+    <script>
+        let allProblems = [];
+        let augmentedData = {
+            function_wise: {},
+            block_wise: {},
+            bm25: {}
+        };
+        
+        // Load all data
+        async function loadData() {
+            try {
+                // This will be populated by Python
+                allProblems = PROBLEMS_DATA;
+                augmentedData = AUGMENTED_DATA;
+                
+                renderProblems();
+                setupEventListeners();
+            } catch (error) {
+                console.error('Error loading data:', error);
+                document.getElementById('problems-container').innerHTML = 
+                    '<div class="no-results">Error loading data. Please check the console for details.</div>';
+            }
+        }
+        
+        function renderProblems(filteredProblems = null) {
+            const container = document.getElementById('problems-container');
+            const problems = filteredProblems || allProblems;
+            
+            if (problems.length === 0) {
+                document.getElementById('no-results').style.display = 'block';
+                container.innerHTML = '';
+                return;
+            }
+            
+            document.getElementById('no-results').style.display = 'none';
+            document.getElementById('visible-problems').textContent = problems.length;
+            
+            container.innerHTML = problems.map(problem => createProblemCard(problem)).join('');
+        }
+        
+        function createProblemCard(problem) {
+            const taskId = problem.task_id;
+            const dataset = problem.dataset || (taskId.startsWith('HumanEval/') ? 'HumanEval' : 'MBPP');
+            const headerClass = dataset === 'MBPP' ? 'problem-header mbpp' : 'problem-header';
+            
+            return `
+                <div class="problem-card" data-task-id="${taskId}" data-dataset="${dataset}">
+                    <div class="${headerClass}" onclick="toggleProblem('${taskId}')">
+                        <div>
+                            <div class="problem-title">${taskId}</div>
+                            <span class="dataset-badge">${dataset}</span>
+                        </div>
+                        <div class="expand-icon" id="icon-${taskId}">▼</div>
+                    </div>
+                    <div class="problem-content" id="content-${taskId}">
+                        <div class="problem-section">
+                            <div class="section-title">Problem Statement</div>
+                            <div class="code-block">${escapeHtml(problem.prompt)}</div>
+                        </div>
+                        
+                        <div class="problem-section">
+                            <div class="section-title">Canonical Solution</div>
+                            <div class="code-block">${escapeHtml(problem.canonical_solution)}</div>
+                        </div>
+                        
+                        <div class="problem-section">
+                            <div class="section-title">Test Cases</div>
+                            <div class="code-block">${escapeHtml(problem.test)}</div>
+                        </div>
+                        
+                        <div class="problem-section">
+                            <div class="section-title">Augmented Contexts</div>
+                            <div class="tab-container">
+                                <button class="tab active" onclick="showTab('${taskId}', 'function_wise')">Function-wise</button>
+                                <button class="tab" onclick="showTab('${taskId}', 'block_wise')">Block-wise</button>
+                                <button class="tab" onclick="showTab('${taskId}', 'bm25')">BM25</button>
+                            </div>
+                            
+                            <div class="tab-content active" id="tab-${taskId}-function_wise">
+                                ${createAugmentedContent(taskId, 'function_wise')}
+                            </div>
+                            <div class="tab-content" id="tab-${taskId}-block_wise">
+                                ${createAugmentedContent(taskId, 'block_wise')}
+                            </div>
+                            <div class="tab-content" id="tab-${taskId}-bm25">
+                                ${createAugmentedContent(taskId, 'bm25')}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        function createAugmentedContent(taskId, type) {
+            const data = augmentedData[type][taskId];
+            
+            if (!data) {
+                return '<div class="augmented-context">No augmented data available for this type.</div>';
+            }
+            
+            if (type === 'bm25') {
+                // BM25 data is an array of strings
+                return `
+                    <div class="augmented-context">
+                        ${data.map((item, index) => `
+                            <div class="context-item">
+                                <div style="font-weight: bold; margin-bottom: 0.5rem;">Context ${index + 1}</div>
+                                <div class="code-block">${escapeHtml(item)}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            } else {
+                // Voyage data is an array of [score, content] pairs
+                return `
+                    <div class="augmented-context">
+                        ${data.map((item, index) => `
+                            <div class="context-item">
+                                <div class="relevance-score">Relevance: ${item[0].toFixed(3)}</div>
+                                <div class="code-block">${escapeHtml(item[1])}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            }
+        }
+        
+        function toggleProblem(taskId) {
+            const content = document.getElementById(`content-${taskId}`);
+            const icon = document.getElementById(`icon-${taskId}`);
+            
+            if (content.classList.contains('expanded')) {
+                content.classList.remove('expanded');
+                icon.textContent = '▼';
+            } else {
+                content.classList.add('expanded');
+                icon.textContent = '▲';
+            }
+        }
+        
+        function showTab(taskId, type) {
+            // Remove active class from all tabs and contents for this problem
+            const tabs = document.querySelectorAll(`[onclick*="${taskId}"]`);
+            const contents = document.querySelectorAll(`[id^="tab-${taskId}-"]`);
+            
+            tabs.forEach(tab => tab.classList.remove('active'));
+            contents.forEach(content => content.classList.remove('active'));
+            
+            // Add active class to selected tab and content
+            event.target.classList.add('active');
+            document.getElementById(`tab-${taskId}-${type}`).classList.add('active');
+        }
+        
+        function expandAll() {
+            document.querySelectorAll('.problem-content').forEach(content => {
+                content.classList.add('expanded');
+            });
+            document.querySelectorAll('.expand-icon').forEach(icon => {
+                icon.textContent = '▲';
+            });
+        }
+        
+        function collapseAll() {
+            document.querySelectorAll('.problem-content').forEach(content => {
+                content.classList.remove('expanded');
+            });
+            document.querySelectorAll('.expand-icon').forEach(icon => {
+                icon.textContent = '▼';
+            });
+        }
+        
+        function setupEventListeners() {
+            const searchInput = document.getElementById('search-input');
+            const filterSelect = document.getElementById('dataset-filter');
+            
+            searchInput.addEventListener('input', filterProblems);
+            filterSelect.addEventListener('change', filterProblems);
+        }
+        
+        function filterProblems() {
+            const searchTerm = document.getElementById('search-input').value.toLowerCase();
+            const datasetFilter = document.getElementById('dataset-filter').value;
+            
+            let filtered = allProblems.filter(problem => {
+                const matchesSearch = problem.task_id.toLowerCase().includes(searchTerm) ||
+                                    problem.prompt.toLowerCase().includes(searchTerm) ||
+                                    problem.canonical_solution.toLowerCase().includes(searchTerm);
+                
+                let matchesFilter = true;
+                if (datasetFilter === 'humaneval') {
+                    matchesFilter = problem.task_id.startsWith('HumanEval/');
+                } else if (datasetFilter === 'mbpp') {
+                    matchesFilter = problem.task_id.startsWith('MBPP/');
+                } else if (datasetFilter !== 'all') {
+                    // Augmentation type filters
+                    const hasAugmentation = augmentedData[datasetFilter][problem.task_id];
+                    matchesFilter = !!hasAugmentation;
+                }
+                
+                return matchesSearch && matchesFilter;
+            });
+            
+            renderProblems(filtered);
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', loadData);
+    </script>
+</body>
+</html> 

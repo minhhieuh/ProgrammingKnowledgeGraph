@@ -44,8 +44,8 @@ from human_eval.data import write_jsonl, read_problems
 import voyageai
 
 # Local imports
-from reranker import rerank_one_solution, cosine_similarity, remove_comments_and_docstrings
-from prompt_utils import *
+from ..core.reranker import rerank_one_solution, cosine_similarity, remove_comments_and_docstrings
+from .prompt_utils import *
 
 
 @dataclass

@@ -1,4 +1,4 @@
-from function_analyzer import *
+from .function_analyzer import *
 from transformers import AutoTokenizer, AutoModelForCausalLM
 import torch
 from transformers import BitsAndBytesConfig

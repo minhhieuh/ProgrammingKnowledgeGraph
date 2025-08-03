@@ -2,60 +2,78 @@
 
 This repository accompanies the research paper ["Context-Augmented Code Generation Using Programming Knowledge Graphs"](https://arxiv.org/pdf/2410.18251) and provides the implementation for a novel framework leveraging a Programming Knowledge Graph (PKG) to enhance code generation using Retrieval-Augmented Generation (RAG).
 
-Overview
-Large Language Models (LLMs) and Code-LLMs (CLLMs) excel in code generation tasks but struggle with complex problems due to irrelevant or incomplete contexts. This project introduces a PKG-based framework to address these challenges by:
-
-**Fine-grained Code Retrieval:** Using tree-pruning techniques to focus on the most relevant code segments while minimizing irrelevant context.
-**Re-ranking Mechanism:** Reducing hallucinations by selectively integrating retrieved context with non-RAG solutions.
-**Fill-in-the-Middle (FIM) Enhancement:** Automatically augmenting code with comments and docstrings for better generation accuracy.
-
-![Alt Text](./images/overview.png)
-
-
-## Key Contributions
-**PKG-Based Retrieval:** Semantic representation and retrieval of code at fine granularity levels (block-wise and function-wise).
-**Tree Pruning:** Improved retrieval precision by pruning irrelevant branches in the knowledge graph.
-**Re-ranking Solutions:** Selecting robust solutions to reduce hallucination in generated code.
-**FIM Enhancer Module:** Automatic augmentation of code with relevant metadata.
-
-Our method achieves:
-Up to 20% improvement in pass@1 accuracy.
-Outperformance of state-of-the-art models by 34% on MBPP.
-
-
-## Getting Started
+## 🚀 Quick Start
 
 ### Prerequisites
-Python 3.8+
+- Python 3.9+
+- Neo4j, APOC and Graph Data Science for knowledge graph management
 
-Neo4j, APOC and Graph Data Science for knowledge graph management.
-
-Install dependencies:
-
+### Installation
 ```bash
-pip install -r requirements.txt
+# Using conda (recommended)
+conda env create -f config/environment.yml
+conda activate pkg-experiments
+
+# Or using pip
+pip install -r config/requirements.txt
 ```
 
-`function_analyzer.py` is responsible to extract code blocks.
+### Basic Usage
+```bash
+# Run a basic experiment with Claude
+python src/experiments/experiment_runner.py --model claude-3-haiku-20240307 --benchmark humaneval --retrieval_method block_pkg
 
-By `function_enhancer.py` you can enhance python function blocks using FIM objective function.
+# Generate PKG from code
+python src/core/knowledge_programming_graph.py
+```
 
-`knowledge_programming_graph.py` is used to generate nodes and realtions corresponded to extracted function block in json files.
+## 📁 Repository Structure
 
-Using `neo4j_graph.ipynb` you can use the previous json files to create a neo4j knowledge graph and retrieve similar path and contents of HumanEval and MBPP benchmarks. The results are save on augmented problems folder.
+```
+├── src/                    # Source code
+│   ├── core/              # Core PKG implementation
+│   ├── experiments/       # Experiment runners and utilities
+│   ├── data/             # Datasets and data processing
+│   ├── notebooks/        # Jupyter notebooks
+│   └── scripts/          # Utility scripts
+├── docs/                 # Documentation
+├── config/              # Configuration files
+├── web/                 # Web interfaces
+├── models/              # Model files
+├── images/              # Documentation images
+└── experiment_results/  # Experiment outputs
+```
 
+## 📖 Documentation
 
-In `code_generation.py` you can load this augmented problems in prompts and evaluate the result of different models when they are augmented using PKG.
+- **[Implementation Details](docs/Implementation.md)** - Technical implementation guide
+- **[Experiments Guide](docs/experiments.md)** - Experimental methodology
+- **[Experiment Runner](docs/EXPERIMENT_RUNNER_README.md)** - Modern experiment runner
+- **[Setup Guide](docs/CONDA_SETUP_GUIDE.md)** - Detailed setup instructions
 
-## Citation
+## 🎯 Key Features
 
-If you find this work useful, please consider citing:
+- **PKG-Based Retrieval**: Semantic representation at fine granularity levels
+- **Tree Pruning**: Improved retrieval precision by pruning irrelevant branches
+- **Re-ranking Solutions**: Reducing hallucination in generated code
+- **FIM Enhancement**: Automatic code augmentation with metadata
 
-```sql
-@article{your_paper,
+## 📊 Results
+
+- Up to **20% improvement** in pass@1 accuracy
+- **34% better** performance than state-of-the-art on MBPP benchmark
+
+## 🔬 Citation
+
+```bibtex
+@article{saberi2024context,
   title={Context-Augmented Code Generation Using Programming Knowledge Graphs},
   author={Iman Saberi and Fatemeh Fard},
-  year={2024}
+  year={2024},
+  journal={arXiv preprint arXiv:2410.18251}
 }
 ```
 
+## 📄 License
+
+This project is licensed under the MIT License - see the LICENSE file for details. 
