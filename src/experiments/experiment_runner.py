@@ -568,8 +568,14 @@ def load_augmented_data(augmentation_type: str, benchmark: str) -> Dict[str, Any
                 
                 # Format the augmented content
                 if augmentation_type == 'bm25':
-                    # BM25 has different structure
+                    # BM25 has different structure - can have either 'content' or 'problem' key
                     content = data.get('content', '')
+                    if not content:
+                        # Some BM25 files use 'problem' key instead of 'content'
+                        content = data.get('problem', '')
+                    # Handle case where content is a list of strings
+                    if isinstance(content, list):
+                        content = '\n\n'.join(content)
                 else:
                     # Voyage embeddings have similarity scores and content
                     problems = data.get('problem', [])
