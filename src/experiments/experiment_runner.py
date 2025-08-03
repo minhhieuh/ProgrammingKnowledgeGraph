@@ -55,6 +55,14 @@ try:
     # Try relative imports first (when run as part of package)
     from ..core.reranker import rerank_one_solution, cosine_similarity, remove_comments_and_docstrings
     from .prompt_utils import *
+    from .prompt_templates import (
+        SYSTEM_PROMPT_TEMPLATE, 
+        USER_PROMPT_TEMPLATE_WITH_CONTEXT, 
+        USER_PROMPT_TEMPLATE_NO_CONTEXT,
+        FULL_PROMPT_TEMPLATE_WITH_CONTEXT,
+        FULL_PROMPT_TEMPLATE_NO_CONTEXT,
+        DEFAULT_PROMPT_CONFIG
+    )
 except ImportError:
     # Fall back to absolute imports (when run directly)
     import sys
@@ -67,6 +75,14 @@ except ImportError:
     
     from core.reranker import rerank_one_solution, cosine_similarity, remove_comments_and_docstrings
     from experiments.prompt_utils import *
+    from experiments.prompt_templates import (
+        SYSTEM_PROMPT_TEMPLATE, 
+        USER_PROMPT_TEMPLATE_WITH_CONTEXT, 
+        USER_PROMPT_TEMPLATE_NO_CONTEXT,
+        FULL_PROMPT_TEMPLATE_WITH_CONTEXT,
+        FULL_PROMPT_TEMPLATE_NO_CONTEXT,
+        DEFAULT_PROMPT_CONFIG
+    )
 
 try:
     from dotenv import load_dotenv
@@ -234,14 +250,37 @@ class AnthropicProvider(LLMProvider):
         timestamp = datetime.now().isoformat()
         
         try:
-            # Estimate input tokens
-            input_tokens = estimate_tokens_anthropic(prompt)
+            # For backwards compatibility, if prompt contains system instructions, split them
+            # Otherwise, use default system prompt
+            if prompt.startswith("You are an expert Python programmer. Solve the following problem:"):
+                # This is the old format - extract system and user parts using global templates
+                system_prompt = SYSTEM_PROMPT_TEMPLATE
+                user_prompt = prompt.replace("You are an expert Python programmer. Solve the following problem:", "Solve the following problem:")
+            else:
+                # Assume this is already a user prompt - use global system template
+                system_prompt = SYSTEM_PROMPT_TEMPLATE
+                user_prompt = prompt
+            
+            # Log the full prompt details
+            logging.info(f"🔍 FULL PROMPT DETAILS:")
+            logging.info(f"📋 System Prompt: {system_prompt}")
+            logging.info(f"👤 User Prompt (first 200 chars): {user_prompt[:200]}...")
+            logging.info(f"📏 System Prompt Length: {len(system_prompt)} chars")
+            logging.info(f"📏 User Prompt Length: {len(user_prompt)} chars")
+            
+            # Estimate input tokens for both system and user prompts
+            system_tokens = estimate_tokens_anthropic(system_prompt)
+            user_tokens = estimate_tokens_anthropic(user_prompt)
+            total_input_tokens = system_tokens + user_tokens
+            
+            logging.info(f"🔢 Estimated Tokens - System: {system_tokens}, User: {user_tokens}, Total: {total_input_tokens}")
             
             response = self.client.messages.create(
                 model=self.config.model_name,
                 max_tokens=self.config.max_tokens,
                 temperature=self.config.temperature,
-                messages=[{"role": "user", "content": prompt}]
+                system=system_prompt,  # Use system parameter for Anthropic
+                messages=[{"role": "user", "content": user_prompt}]
             )
             
             end_time = time.time()
@@ -250,15 +289,23 @@ class AnthropicProvider(LLMProvider):
             # Extract response text
             response_text = response.content[0].text
             
+            # Log response details
+            logging.info(f"✅ Response received (first 100 chars): {response_text[:100]}...")
+            logging.info(f"📏 Response Length: {len(response_text)} chars")
+            
             # Get actual token usage from response
-            actual_input_tokens = response.usage.input_tokens if hasattr(response, 'usage') else input_tokens
+            actual_input_tokens = response.usage.input_tokens if hasattr(response, 'usage') else total_input_tokens
             actual_output_tokens = response.usage.output_tokens if hasattr(response, 'usage') else estimate_tokens_anthropic(response_text)
             total_tokens = actual_input_tokens + actual_output_tokens
+            
+            logging.info(f"🔢 Actual Tokens - Input: {actual_input_tokens}, Output: {actual_output_tokens}, Total: {total_tokens}")
             
             # Calculate costs
             input_cost, output_cost, total_cost = calculate_cost(
                 actual_input_tokens, actual_output_tokens, self.config.model_name
             )
+            
+            logging.info(f"💰 Cost - Input: ${input_cost:.6f}, Output: ${output_cost:.6f}, Total: ${total_cost:.6f}")
             
             metrics = GenerationMetrics(
                 input_tokens=actual_input_tokens,
@@ -289,7 +336,7 @@ class AnthropicProvider(LLMProvider):
             end_time = time.time()
             latency = end_time - start_time
             
-            logging.error(f"Anthropic API error: {e}")
+            logging.error(f"❌ Anthropic API error: {e}")
             
             metrics = GenerationMetrics(
                 input_tokens=estimate_tokens_anthropic(prompt),
@@ -327,12 +374,39 @@ class OpenAIProvider(LLMProvider):
         timestamp = datetime.now().isoformat()
         
         try:
+            # For OpenAI, we'll treat the entire prompt as user content since OpenAI handles system messages differently
+            # Extract system instructions if present in the prompt
+            if prompt.startswith("You are an expert Python programmer. Solve the following problem:"):
+                # This is the old format - we can optionally split for OpenAI too using global templates
+                system_prompt = SYSTEM_PROMPT_TEMPLATE
+                user_prompt = prompt.replace("You are an expert Python programmer. Solve the following problem:", "Solve the following problem:")
+                
+                # For OpenAI, we'll use both system and user messages
+                messages = [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ]
+            else:
+                # Treat as user prompt only
+                system_prompt = ""
+                user_prompt = prompt
+                messages = [{"role": "user", "content": prompt}]
+            
+            # Log the full prompt details
+            logging.info(f"🔍 FULL PROMPT DETAILS (OpenAI):")
+            if system_prompt:
+                logging.info(f"📋 System Prompt: {system_prompt}")
+                logging.info(f"📏 System Prompt Length: {len(system_prompt)} chars")
+            logging.info(f"👤 User Prompt (first 200 chars): {user_prompt[:200]}...")
+            logging.info(f"📏 User Prompt Length: {len(user_prompt)} chars")
+            
             # Estimate input tokens
             input_tokens = count_tokens_openai(prompt, self.config.model_name)
+            logging.info(f"🔢 Estimated Input Tokens: {input_tokens}")
             
             response = self.client.chat.completions.create(
                 model=self.config.model_name,
-                messages=[{"role": "user", "content": prompt}],
+                messages=messages,
                 temperature=self.config.temperature,
                 max_tokens=self.config.max_tokens
             )
@@ -343,15 +417,23 @@ class OpenAIProvider(LLMProvider):
             # Extract response text
             response_text = response.choices[0].message.content or ""
             
+            # Log response details
+            logging.info(f"✅ Response received (first 100 chars): {response_text[:100]}...")
+            logging.info(f"📏 Response Length: {len(response_text)} chars")
+            
             # Get actual token usage from response
             actual_input_tokens = response.usage.prompt_tokens if response.usage else input_tokens
             actual_output_tokens = response.usage.completion_tokens if response.usage else count_tokens_openai(response_text, self.config.model_name)
             total_tokens = actual_input_tokens + actual_output_tokens
             
+            logging.info(f"🔢 Actual Tokens - Input: {actual_input_tokens}, Output: {actual_output_tokens}, Total: {total_tokens}")
+            
             # Calculate costs
             input_cost, output_cost, total_cost = calculate_cost(
                 actual_input_tokens, actual_output_tokens, self.config.model_name
             )
+            
+            logging.info(f"💰 Cost - Input: ${input_cost:.6f}, Output: ${output_cost:.6f}, Total: ${total_cost:.6f}")
             
             metrics = GenerationMetrics(
                 input_tokens=actual_input_tokens,
@@ -382,7 +464,7 @@ class OpenAIProvider(LLMProvider):
             end_time = time.time()
             latency = end_time - start_time
             
-            logging.error(f"OpenAI API error: {e}")
+            logging.error(f"❌ OpenAI API error: {e}")
             
             metrics = GenerationMetrics(
                 input_tokens=count_tokens_openai(prompt, self.config.model_name),
@@ -418,42 +500,6 @@ def get_provider(config: ExperimentConfig) -> LLMProvider:
         raise ValueError(f"Unsupported model type: {config.model_type}. Supported types: {list(providers.keys())}")
     
     return providers[config.model_type](config)
-
-
-def create_prompt(problem: str, model_type: str, augmented_data: Optional[str] = None) -> str:
-    """Create appropriate prompt based on model type and augmented data"""
-    
-    if augmented_data:
-        prompt = f"""You are an expert Python programmer. Solve the following problem:
-
-{problem}
-
-The following code might be helpful as reference:
-{augmented_data}
-
-If the helper code is useful, integrate its logic directly into your solution. Otherwise, ignore it.
-
-Requirements:
-- Write executable Python code
-- Include all necessary imports
-- Ensure the solution is self-contained
-- Write your solution between [PYTHON] and [/PYTHON] tags
-
-Your solution:"""
-    else:
-        prompt = f"""You are an expert Python programmer. Solve the following problem:
-
-{problem}
-
-Requirements:
-- Write executable Python code
-- Include all necessary imports
-- Ensure the solution is self-contained
-- Write your solution between [PYTHON] and [/PYTHON] tags
-
-Your solution:"""
-    
-    return prompt
 
 
 def extract_python_code(text: str) -> str:
@@ -641,13 +687,36 @@ def run_single_experiment(config: ExperimentConfig, augmentation_type: str) -> L
         # Get augmented context if available
         context = augmented_data.get(task_id, None) if augmentation_type != 'no_rag' else None
         
+        # Log prompt creation details
+        logging.info(f"\n🔄 Processing {task_id} ({i}/{total_problems})")
+        logging.info(f"📝 Problem: {problem_prompt[:100]}...")
+        logging.info(f"🔧 Augmentation Type: {augmentation_type}")
+        if context:
+            logging.info(f"📚 Augmented Context Length: {len(context)} chars")
+            logging.info(f"📚 Augmented Context Preview: {context[:150]}...")
+        else:
+            logging.info(f"📚 No augmented context (using {augmentation_type})")
+        
         # Create prompt
-        prompt = create_prompt(problem_prompt, config.model_type, context)
+        if augmentation_type != 'no_rag' and context:
+            # Create the full prompt using global templates
+            prompt = create_full_prompt(problem_prompt, context)
+        else:
+            # No augmentation - use global templates
+            prompt = create_full_prompt(problem_prompt)
+        
+        logging.info(f"📋 Created prompt length: {len(prompt)} chars")
         
         # Generate solution
         try:
             raw_output, metrics = provider.generate(prompt)
             generated_code = extract_python_code(raw_output)
+            
+            # Save detailed prompt information
+            system_prompt, user_prompt = extract_system_and_user_prompts(prompt)
+            output_dir = Path(config.output_dir) / config.experiment_name
+            prompt_log = save_prompt_details(output_dir, task_id, system_prompt, user_prompt, 
+                                           raw_output, augmentation_type, metrics)
             
             # Evaluate solution
             is_valid = is_syntactically_valid(generated_code)
@@ -669,13 +738,17 @@ def run_single_experiment(config: ExperimentConfig, augmentation_type: str) -> L
             result = {
                 'task_id': task_id,
                 'prompt': problem_prompt,
+                'full_prompt': prompt,
+                'system_prompt': system_prompt,
+                'user_prompt': user_prompt,
                 'augmentation_type': augmentation_type,
                 'raw_output': raw_output,
                 'generated_code': generated_code,
                 'is_syntactically_valid': is_valid,
                 'passed': passed,
                 'augmented_context': context if context else "",
-                'metrics': metrics._asdict()
+                'metrics': metrics._asdict(),
+                'prompt_log_file': str(prompt_log.get('log_file', ''))
             }
             
             results.append(result)
@@ -1019,6 +1092,79 @@ def calculate_metrics(results: List[Dict]) -> Dict[str, float]:
         'passed_problems': passed,
         'syntactically_valid_problems': syntactically_valid
     }
+
+
+def save_prompt_details(output_dir: Path, task_id: str, system_prompt: str, user_prompt: str, 
+                      response: str, augmentation_type: str, metrics: GenerationMetrics):
+    """Save detailed prompt and response information to a file"""
+    prompt_dir = output_dir / "prompt_logs"
+    prompt_dir.mkdir(exist_ok=True)
+    
+    # Create a detailed log entry
+    prompt_log = {
+        "task_id": task_id,
+        "timestamp": metrics.timestamp,
+        "augmentation_type": augmentation_type,
+        "model_name": metrics.model_name,
+        "system_prompt": system_prompt,
+        "user_prompt": user_prompt,
+        "system_prompt_length": len(system_prompt),
+        "user_prompt_length": len(user_prompt),
+        "total_prompt_length": len(system_prompt) + len(user_prompt),
+        "response": response,
+        "response_length": len(response),
+        "metrics": metrics._asdict()
+    }
+    
+    # Save individual prompt log
+    log_file = prompt_dir / f"{task_id.replace('/', '_')}_{augmentation_type}_prompt.json"
+    with open(log_file, 'w') as f:
+        json.dump(prompt_log, f, indent=2)
+    
+    return prompt_log
+
+
+def extract_system_and_user_prompts(full_prompt: str) -> tuple[str, str]:
+    """Extract system and user prompts from the full prompt using global templates"""
+    if full_prompt.startswith("You are an expert Python programmer. Solve the following problem:"):
+        # Use the global system template
+        system_prompt = SYSTEM_PROMPT_TEMPLATE
+        user_prompt = full_prompt.replace("You are an expert Python programmer. Solve the following problem:", "Solve the following problem:")
+        return system_prompt, user_prompt
+    else:
+        # Fallback - assume it's all user prompt
+        return "", full_prompt
+
+
+def create_system_user_prompts(problem: str, augmented_data: Optional[str] = None) -> tuple[str, str]:
+    """Create separate system and user prompts using global templates"""
+    system_prompt = SYSTEM_PROMPT_TEMPLATE
+    
+    if augmented_data:
+        user_prompt = USER_PROMPT_TEMPLATE_WITH_CONTEXT.format(
+            problem=problem,
+            context=augmented_data
+        )
+    else:
+        user_prompt = USER_PROMPT_TEMPLATE_NO_CONTEXT.format(problem=problem)
+    
+    return system_prompt, user_prompt
+
+
+def create_full_prompt(problem: str, augmented_data: Optional[str] = None) -> str:
+    """Create full prompt using global templates (for backward compatibility)"""
+    if augmented_data:
+        return FULL_PROMPT_TEMPLATE_WITH_CONTEXT.format(
+            problem=problem,
+            context=augmented_data
+        )
+    else:
+        return FULL_PROMPT_TEMPLATE_NO_CONTEXT.format(problem=problem)
+
+
+def create_prompt(problem: str, model_type: str, augmented_data: Optional[str] = None) -> tuple[str, str]:
+    """Create appropriate system and user prompts (legacy function for compatibility)"""
+    return create_system_user_prompts(problem, augmented_data)
 
 
 def save_results(config: ExperimentConfig, all_results: Dict[str, List[Dict]], 

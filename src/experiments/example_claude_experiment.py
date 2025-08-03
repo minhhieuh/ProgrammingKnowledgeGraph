@@ -429,7 +429,7 @@ def run_single_instance_test():
         
         # Import required modules
         from human_eval.data import read_problems
-        from experiment_runner import get_provider
+        from experiment_runner import get_provider, extract_system_and_user_prompts, save_prompt_details, create_full_prompt
         import json
         
         # Load just the first problem
@@ -447,17 +447,36 @@ def run_single_instance_test():
         output_dir = Path(config.output_dir) / config.experiment_name
         output_dir.mkdir(parents=True, exist_ok=True)
         
-        # Run the single test
+        # Get problem data
         problem_data = first_problem[first_task_id]
         problem_prompt = problem_data['prompt']
         
-        # Generate code
+        # Set augmentation type for this test
+        augmentation_type = 'no_rag'
+        
+        # Log prompt creation details (same as full experiment)
+        logging.info(f"\n🔄 Processing {first_task_id} (1/1)")
+        logging.info(f"📝 Problem: {problem_prompt[:100]}...")
+        logging.info(f"🔧 Augmentation Type: {augmentation_type}")
+        logging.info(f"📚 No augmented context (using {augmentation_type})")
+        
+        # Create prompt using global templates
+        prompt = create_full_prompt(problem_prompt)
+        
+        logging.info(f"📋 Created prompt length: {len(prompt)} chars")
+        
+        # Generate code with full logging
         print("🤖 Generating code...")
-        generated_code, metrics = provider.generate(problem_prompt)
+        raw_output, metrics = provider.generate(prompt)
+        
+        # Save detailed prompt information (same as full experiment)
+        system_prompt, user_prompt = extract_system_and_user_prompts(prompt)
+        prompt_log = save_prompt_details(output_dir, first_task_id, system_prompt, user_prompt, 
+                                       raw_output, augmentation_type, metrics)
         
         print(f"✅ Code generated successfully!")
-        print(f"📏 Generated code length: {len(generated_code)} characters")
-        print(f"🔍 First 200 chars: {generated_code[:200]}...")
+        print(f"📏 Generated code length: {len(raw_output)} characters")
+        print(f"🔍 First 200 chars: {raw_output[:200]}...")
         
         # Display comprehensive metrics
         print(f"\n📊 Generation Metrics:")
@@ -470,21 +489,28 @@ def run_single_instance_test():
         print(f"   • Latency: {metrics.latency_seconds:.2f} seconds")
         print(f"   • Success: {metrics.success}")
         
-        # Check syntax
-        from experiment_runner import is_syntactically_valid
+        # Extract and check syntax
+        from experiment_runner import extract_python_code, is_syntactically_valid
+        generated_code = extract_python_code(raw_output)
         is_valid = is_syntactically_valid(generated_code)
         print(f"✅ Syntax valid: {is_valid}")
         
-        # Save result
+        # Save result with full prompt information
         result = {
             'task_id': first_task_id,
             'prompt': problem_prompt,
+            'full_prompt': prompt,
+            'system_prompt': system_prompt,
+            'user_prompt': user_prompt,
+            'augmentation_type': augmentation_type,
+            'raw_output': raw_output,
             'generated_code': generated_code,
             'syntax_valid': is_valid,
             'model': config.model_name,
-            'augmentation_type': 'no_rag',
             'metrics': metrics._asdict(),
-            'timestamp': datetime.now().isoformat()
+            'timestamp': datetime.now().isoformat(),
+            'prompt_log_saved': True,
+            'prompt_log_location': str(output_dir / "prompt_logs")
         }
         
         results_file = output_dir / "single_test_result.json"
@@ -502,8 +528,16 @@ def run_single_instance_test():
         print(f"\n✅ Single instance test completed!")
         print(f"📊 Result saved to: {results_file}")
         print(f"📈 Provider metrics saved to: {provider_metrics_file}")
+        print(f"📋 Detailed prompt logs saved to: {output_dir / 'prompt_logs'}")
         print(f"🎯 This confirms the setup is working correctly!")
         print(f"💰 Total cost for this test: ${metrics.total_cost:.6f}")
+        
+        # Show what prompt logs were created
+        prompt_logs_dir = output_dir / "prompt_logs"
+        if prompt_logs_dir.exists():
+            print(f"\n📁 Prompt log files created:")
+            for log_file in prompt_logs_dir.glob("*.json"):
+                print(f"   • {log_file.name}")
         
     except Exception as e:
         print(f"❌ Test failed: {e}")
