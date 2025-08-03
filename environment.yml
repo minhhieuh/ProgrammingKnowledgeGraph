@@ -1,0 +1,35 @@
+name: pkg-experiments
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  # Python version
+  - python=3.9
+  
+  # Core scientific computing
+  - numpy=1.26.4
+  - pandas=2.2.2
+  
+  # Progress bars and utilities
+  - tqdm>=4.64.0
+  
+  # Jupyter support (optional but useful)
+  - jupyter
+  - ipykernel
+  
+  # Development tools (optional)
+  - pytest>=7.0.0
+  - black>=22.0.0
+  - flake8>=5.0.0
+  
+  # Install via pip (not available on conda)
+  - pip
+  - pip:
+    # Core PKG dependencies
+    - human-eval==1.0.3
+    - voyageai==0.2.3
+    - astor==0.8.1
+    
+    # LLM provider dependencies
+    - anthropic>=0.25.0
+    - openai>=1.0.0 
