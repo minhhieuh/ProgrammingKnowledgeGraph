@@ -142,13 +142,20 @@ def rerank_one_solution(query, list_of_imp,vo):
     
     query_embedding = vo.embed([query], model="voyage-code-2").embeddings[0]
     codes = []
+    # with open("solution.txt","w") as f:
+    #     for sol in list_of_imp:
+    #         f.write(str(sol))
+    #         f.write("\n")
+    #     exit()
+            
     for sol in list_of_imp:
-        codes.append(remove_comments_and_docstrings(sol['completion']))
-       
+        codes.append(remove_comments_and_docstrings(sol['generated_code']))
+        # codes.append(sol)
+    
     solution_embeddings = vo.embed(codes, model="voyage-code-2").embeddings
 
     similarities = np.array([cosine_similarity(query_embedding,emb) for emb in solution_embeddings])
-    # print(f"solution:\n{list_of_imp[similarities.argmax()]}")
+    print(f"solution:\n{list_of_imp[similarities.argmax()]}")
     return list_of_imp[similarities.argmax()]
 
 

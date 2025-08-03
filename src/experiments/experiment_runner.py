@@ -28,6 +28,7 @@ import pandas as pd
 import numpy as np
 from tqdm import tqdm
 from datetime import datetime
+from concurrent.futures import ProcessPoolExecutor, as_completed
 
 # LLM Framework imports
 try:
@@ -106,24 +107,59 @@ class GenerationMetrics(NamedTuple):
     error_message: str = ""
 
 
-# Pricing information (as of 2024) - costs per 1M tokens
-MODEL_PRICING = {
-    # Anthropic Claude models
-    "claude-3-5-sonnet-20241022": {"input": 3.00, "output": 15.00},
-    "claude-3-5-sonnet-20240620": {"input": 3.00, "output": 15.00},
-    "claude-3-5-haiku-20241022": {"input": 1.00, "output": 5.00},
-    "claude-3-opus-20240229": {"input": 15.00, "output": 75.00},
-    "claude-3-sonnet-20240229": {"input": 3.00, "output": 15.00},
-    "claude-3-haiku-20240307": {"input": 0.25, "output": 1.25},
+# Pricing information loaded from CSV file
+def load_model_pricing(csv_filename: str = "model_pricing.csv") -> Dict[str, Dict[str, float]]:
+    """Load model pricing information from CSV file"""
+    # Try multiple possible paths for the CSV file
+    possible_paths = [
+        csv_filename,  # Current directory
+        f"../../{csv_filename}",  # From src/experiments/ to root
+        f"../{csv_filename}",  # From src/ to root
+        os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), csv_filename)  # Absolute path to root
+    ]
     
-    # OpenAI GPT models
-    "gpt-4o": {"input": 2.50, "output": 10.00},
-    "gpt-4o-mini": {"input": 0.15, "output": 0.60},
-    "gpt-4-turbo": {"input": 10.00, "output": 30.00},
-    "gpt-4": {"input": 30.00, "output": 60.00},
-    "gpt-3.5-turbo": {"input": 0.50, "output": 1.50},
-    "gpt-3.5-turbo-0125": {"input": 0.50, "output": 1.50},
-}
+    pricing = {}
+    for csv_path in possible_paths:
+        try:
+            if os.path.exists(csv_path):
+                df = pd.read_csv(csv_path)
+                for _, row in df.iterrows():
+                    pricing[row['model_name']] = {
+                        'input': float(row['input_price_per_mtok']),
+                        'output': float(row['output_price_per_mtok'])
+                    }
+                logging.info(f"✅ Loaded pricing for {len(pricing)} models from {csv_path}")
+                return pricing
+        except Exception as e:
+            logging.debug(f"Failed to load from {csv_path}: {e}")
+            continue
+    
+    # If no file found, use fallback
+    logging.warning(f"⚠️  Pricing file {csv_filename} not found in any expected location, using fallback pricing")
+    return get_fallback_pricing()
+
+def get_fallback_pricing() -> Dict[str, Dict[str, float]]:
+    """Fallback pricing if CSV file is not available"""
+    return {
+        # Anthropic Claude models
+        "claude-3-5-sonnet-20241022": {"input": 3.00, "output": 15.00},
+        "claude-3-5-sonnet-20240620": {"input": 3.00, "output": 15.00},
+        "claude-3-5-haiku-20241022": {"input": 1.00, "output": 5.00},
+        "claude-3-opus-20240229": {"input": 15.00, "output": 75.00},
+        "claude-3-sonnet-20240229": {"input": 3.00, "output": 15.00},
+        "claude-3-haiku-20240307": {"input": 0.25, "output": 1.25},
+        
+        # OpenAI GPT models
+        "gpt-4o": {"input": 2.50, "output": 10.00},
+        "gpt-4o-mini": {"input": 0.15, "output": 0.60},
+        "gpt-4-turbo": {"input": 10.00, "output": 30.00},
+        "gpt-4": {"input": 30.00, "output": 60.00},
+        "gpt-3.5-turbo": {"input": 0.50, "output": 1.50},
+        "gpt-3.5-turbo-0125": {"input": 0.50, "output": 1.50},
+    }
+
+# Load pricing from CSV file
+MODEL_PRICING = load_model_pricing()
 
 
 def estimate_tokens_anthropic(text: str) -> int:
@@ -283,11 +319,21 @@ class AnthropicProvider(LLMProvider):
                 messages=[{"role": "user", "content": user_prompt}]
             )
             
+#             response = """
+# def dummy_function():
+#     return "Hello, world!"
+# """
+            
             end_time = time.time()
             latency = end_time - start_time
             
             # Extract response text
-            response_text = response.content[0].text
+            if hasattr(response, 'content') and response.content:
+                # Anthropic Message object has a content array with text blocks
+                response_text = response.content[0].text if response.content[0].type == 'text' else ""
+            else:
+                # Fallback for other response formats
+                response_text = str(response)
             
             # Log response details
             logging.info(f"✅ Response received (first 100 chars): {response_text[:100]}...")
@@ -404,26 +450,40 @@ class OpenAIProvider(LLMProvider):
             input_tokens = count_tokens_openai(prompt, self.config.model_name)
             logging.info(f"🔢 Estimated Input Tokens: {input_tokens}")
             
-            response = self.client.chat.completions.create(
-                model=self.config.model_name,
-                messages=messages,
-                temperature=self.config.temperature,
-                max_tokens=self.config.max_tokens
-            )
+            # response = self.client.chat.completions.create(
+            #     model=self.config.model_name,
+            #     messages=messages,
+            #     temperature=self.config.temperature,
+            #     max_tokens=self.config.max_tokens
+            # )
+            
+            response = "LLM response"
             
             end_time = time.time()
             latency = end_time - start_time
             
             # Extract response text
-            response_text = response.choices[0].message.content or ""
+            if hasattr(response, 'choices') and response.choices:
+                # OpenAI response object has choices array with message content
+                response_text = response.choices[0].message.content or ""
+            elif isinstance(response, dict):
+                response_text = response.get('choices', [{}])[0].get('message', {}).get('content', "")
+            else:
+                # Fallback for other response formats
+                response_text = str(response)
             
             # Log response details
             logging.info(f"✅ Response received (first 100 chars): {response_text[:100]}...")
             logging.info(f"📏 Response Length: {len(response_text)} chars")
             
             # Get actual token usage from response
-            actual_input_tokens = response.usage.prompt_tokens if response.usage else input_tokens
-            actual_output_tokens = response.usage.completion_tokens if response.usage else count_tokens_openai(response_text, self.config.model_name)
+            if hasattr(response, 'usage') and response.usage:
+                actual_input_tokens = response.usage.prompt_tokens
+                actual_output_tokens = response.usage.completion_tokens
+            else:
+                # Fallback when response is not an API object (e.g., during testing)
+                actual_input_tokens = input_tokens
+                actual_output_tokens = count_tokens_openai(response_text, self.config.model_name)
             total_tokens = actual_input_tokens + actual_output_tokens
             
             logging.info(f"🔢 Actual Tokens - Input: {actual_input_tokens}, Output: {actual_output_tokens}, Total: {total_tokens}")
@@ -546,9 +606,9 @@ def extract_python_code(text: str) -> str:
 def load_augmented_data(augmentation_type: str, benchmark: str) -> Dict[str, Any]:
     """Load augmented data based on type and benchmark"""
     file_mapping = {
-        'voyage_func': f'augmented_problems/{benchmark}_function_wise_relevant_context.jsonl',
-        'voyage_block': f'augmented_problems/{benchmark}_blockwise_relevant_context.jsonl',
-        'bm25': f'augmented_problems/bm25_relevant_context_{benchmark}.jsonl'
+        'voyage_func': f'src/data/augmented_problems/{benchmark}_function_wise_relevant_context.jsonl',
+        'voyage_block': f'src/data/augmented_problems/{benchmark}_blockwise_relevant_context.jsonl',
+        'bm25': f'src/data/augmented_problems/bm25_relevant_context_{benchmark}.jsonl'
     }
     
     if augmentation_type not in file_mapping:
@@ -644,7 +704,7 @@ def is_syntactically_valid(code: str) -> bool:
         return False
 
 
-def run_single_experiment(config: ExperimentConfig, augmentation_type: str) -> List[Dict]:
+def run_single_experiment(config: ExperimentConfig, augmentation_type: str) -> tuple[List[Dict], dict]:
     """Run experiment for a single augmentation type with comprehensive metrics tracking"""
     experiment_start_time = time.time()
     logging.info(f"Running experiment: {config.model_name} with {augmentation_type}")
@@ -656,6 +716,8 @@ def run_single_experiment(config: ExperimentConfig, augmentation_type: str) -> L
         problems = load_mbpp_problems()
     else:
         raise ValueError(f"Unknown benchmark: {config.benchmark}")
+    
+    problems = {k: v for k, v in list(problems.items())[150:151]}
     
     # Load augmented data if needed
     augmented_data = {}
@@ -817,10 +879,14 @@ def run_single_experiment(config: ExperimentConfig, augmentation_type: str) -> L
     
     # Add experiment-level metrics to each result for later analysis
     for result in results:
-        result['experiment_metrics'] = experiment_metrics
-        result['provider_metrics'] = provider_metrics
+        # Create lightweight versions without individual metrics to avoid duplication
+        lightweight_experiment_metrics = {k: v for k, v in experiment_metrics.items() if k != 'individual_metrics'}
+        lightweight_provider_metrics = {k: v for k, v in provider_metrics.items() if k != 'requests'}
+        
+        result['experiment_metrics'] = lightweight_experiment_metrics
+        result['provider_metrics'] = lightweight_provider_metrics
     
-    return results
+    return results, provider_metrics
 
 
 def log_experiment_summary(augmentation_type: str, experiment_metrics: dict, provider_metrics: dict, config: ExperimentConfig):
@@ -1030,18 +1096,48 @@ def load_mbpp_problems() -> Dict:
         return {}
 
 
+def rerank_single_task(task_data: Tuple[str, str, List[Dict]]) -> Optional[Dict]:
+    """Helper function for parallel re-ranking of a single task"""
+    task_id, query, candidates = task_data
+    
+    if not candidates:
+        return None
+    
+    try:
+        # Initialize VoyageAI client for this process
+        import voyageai
+        voyageai.api_key = os.getenv('VOYAGE_API_KEY')
+        vo = voyageai.Client()
+        
+        # Use the reranking function from the original implementation
+        best_solution = rerank_one_solution(query, candidates, vo)
+        return best_solution
+    except Exception as e:
+        logging.error(f"Error during re-ranking for {task_id}: {e}")
+        # Fall back to first valid solution
+        valid_candidates = [c for c in candidates if c.get('passed', False)]
+        if valid_candidates:
+            return valid_candidates[0]
+        elif candidates:
+            return candidates[0]
+        return None
+
+
 def perform_reranking(all_results: Dict[str, List[Dict]], config: ExperimentConfig) -> List[Dict]:
-    """Perform re-ranking as described in the paper"""
+    """Perform re-ranking as described in the paper using parallel processing"""
     if not config.enable_reranking:
         return []
     
-    logging.info("Performing solution re-ranking...")
+    logging.info("Performing solution re-ranking with 28 workers...")
     
-    # Initialize embedder for semantic similarity
+    # Check VoyageAI availability
     try:
-        voyageai.api_key = os.getenv('VOYAGE_API_KEY')  # Set your Voyage API key
-        vo = voyageai.Client()
-    except:
+        import voyageai
+        voyageai.api_key = os.getenv('VOYAGE_API_KEY')
+        if not voyageai.api_key:
+            logging.warning("VOYAGE_API_KEY not found in environment")
+            return []
+    except ImportError:
         logging.warning("VoyageAI not available for re-ranking")
         return []
     
@@ -1051,8 +1147,8 @@ def perform_reranking(all_results: Dict[str, List[Dict]], config: ExperimentConf
     else:
         problems = load_mbpp_problems()
     
-    reranked_results = []
-    
+    # Prepare tasks for parallel processing
+    tasks = []
     for task_id in problems.keys():
         # Collect all solutions for this task
         candidates = []
@@ -1061,24 +1157,28 @@ def perform_reranking(all_results: Dict[str, List[Dict]], config: ExperimentConf
             if task_result:
                 candidates.append(task_result)
         
-        if not candidates:
-            continue
-        
-        query = problems[task_id]['prompt']
-        
-        try:
-            # Use the reranking function from the original implementation
-            best_solution = rerank_one_solution(query, candidates, vo)
-            reranked_results.append(best_solution)
-        except Exception as e:
-            logging.error(f"Error during re-ranking for {task_id}: {e}")
-            # Fall back to first valid solution
-            valid_candidates = [c for c in candidates if c.get('passed', False)]
-            if valid_candidates:
-                reranked_results.append(valid_candidates[0])
-            elif candidates:
-                reranked_results.append(candidates[0])
+        if candidates:
+            query = problems[task_id]['prompt']
+            tasks.append((task_id, query, candidates))
     
+    reranked_results = []
+    
+    # Process tasks in parallel with progress bar
+    with ProcessPoolExecutor(max_workers=1) as executor:
+        # Submit all tasks
+        future_to_task = {executor.submit(rerank_single_task, task): task for task in tasks}
+        
+        # Process completed tasks with progress bar
+        for future in tqdm(as_completed(future_to_task), total=len(tasks), desc="Re-ranking solutions"):
+            try:
+                result = future.result()
+                if result is not None:
+                    reranked_results.append(result)
+            except Exception as e:
+                task_id = future_to_task[future][0]
+                logging.error(f"Failed to process re-ranking for {task_id}: {e}")
+    
+    logging.info(f"Re-ranking completed: {len(reranked_results)} solutions processed")
     return reranked_results
 
 
@@ -1103,8 +1203,8 @@ def calculate_metrics(results: List[Dict]) -> Dict[str, float]:
 def save_prompt_details(output_dir: Path, task_id: str, system_prompt: str, user_prompt: str, 
                       response: str, augmentation_type: str, metrics: GenerationMetrics):
     """Save detailed prompt and response information to a file"""
-    prompt_dir = output_dir / "prompt_logs"
-    prompt_dir.mkdir(exist_ok=True)
+    prompt_dir = output_dir / "prompt_logs" / augmentation_type
+    prompt_dir.mkdir(parents=True, exist_ok=True)
     
     # Create a detailed log entry
     prompt_log = {
@@ -1123,7 +1223,7 @@ def save_prompt_details(output_dir: Path, task_id: str, system_prompt: str, user
     }
     
     # Save individual prompt log
-    log_file = prompt_dir / f"{task_id.replace('/', '_')}_{augmentation_type}_prompt.json"
+    log_file = prompt_dir / f"{task_id.replace('/', '_')}_prompt.json"
     with open(log_file, 'w') as f:
         json.dump(prompt_log, f, indent=2)
     
@@ -1399,12 +1499,14 @@ def main():
     
     # Run experiments for each augmentation type
     all_results = {}
+    all_provider_metrics = {}
     metrics = {}
     
     for aug_type in config.augmentation_types:
         try:
-            results = run_single_experiment(config, aug_type)
+            results, provider_metrics = run_single_experiment(config, aug_type)
             all_results[aug_type] = results
+            all_provider_metrics[aug_type] = provider_metrics
             metrics[aug_type] = calculate_metrics(results)
             
             logging.info(f"Completed {aug_type}: Pass@1 = {metrics[aug_type]['pass@1']:.3f}")
@@ -1412,9 +1514,16 @@ def main():
         except Exception as e:
             logging.error(f"Error in {aug_type} experiment: {e}")
             continue
+    reranked_results = []
+
+    # Save all results
+    save_results(config, all_results, reranked_results, metrics)
+    
+    # Save detailed metrics including individual request data
+    output_dir = Path(config.output_dir) / config.experiment_name
+    save_detailed_metrics(output_dir, config, all_results, all_provider_metrics)
     
     # Perform re-ranking if enabled
-    reranked_results = []
     if config.enable_reranking and len(all_results) > 1:
         try:
             reranked_results = perform_reranking(all_results, config)
@@ -1426,6 +1535,10 @@ def main():
     
     # Save all results
     save_results(config, all_results, reranked_results, metrics)
+    
+    # Save detailed metrics including individual request data
+    output_dir = Path(config.output_dir) / config.experiment_name
+    save_detailed_metrics(output_dir, config, all_results, all_provider_metrics)
     
     # Print summary
     print("\n" + "="*60)

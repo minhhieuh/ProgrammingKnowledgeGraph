@@ -24,8 +24,8 @@ Requirements:
 - Include all necessary imports
 - Ensure the solution is self-contained
 - Write your solution between [PYTHON] and [/PYTHON] tags
-
-Your solution:"""
+- No explanation, no extra text, no comments outside of the codes
+"""
 
 USER_PROMPT_TEMPLATE_NO_CONTEXT = """Solve the following problem:
 
@@ -36,8 +36,9 @@ Requirements:
 - Include all necessary imports
 - Ensure the solution is self-contained
 - Write your solution between [PYTHON] and [/PYTHON] tags
+- No explanation, no extra text, no comments outside of the codes
 
-Your solution:"""
+"""
 
 # Legacy Full Prompt Templates (for backward compatibility)
 FULL_PROMPT_TEMPLATE_WITH_CONTEXT = """You are an expert Python programmer. Solve the following problem:
@@ -54,8 +55,9 @@ Requirements:
 - Include all necessary imports
 - Ensure the solution is self-contained
 - Write your solution between [PYTHON] and [/PYTHON] tags
+- No explanation, no extra text, no comments outside of the codes
 
-Your solution:"""
+"""
 
 FULL_PROMPT_TEMPLATE_NO_CONTEXT = """You are an expert Python programmer. Solve the following problem:
 
@@ -66,8 +68,8 @@ Requirements:
 - Include all necessary imports
 - Ensure the solution is self-contained
 - Write your solution between [PYTHON] and [/PYTHON] tags
-
-Your solution:"""
+- No explanation, no extra text, no comments outside of the codes
+"""
 
 # Alternative Templates (for experimentation)
 ALTERNATIVE_SYSTEM_PROMPT = "You are a skilled software engineer specializing in Python development. Focus on writing efficient, readable, and well-documented code."
@@ -82,8 +84,8 @@ Guidelines:
 - Add brief comments for complex logic
 - Ensure your solution handles edge cases
 - Wrap your final solution in [PYTHON] and [/PYTHON] tags
-
-Implementation:"""
+- No explanation, no extra text, no comments outside of the codes
+"""
 
 # Template Configuration
 class PromptConfig:

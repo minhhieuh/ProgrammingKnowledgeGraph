@@ -5,7 +5,6 @@ __pycache__/
 
 # C extensions
 *.so
-*.csv
 
 # Distribution / packaging
 .Python
@@ -165,3 +164,4 @@ cython_debug/
 #.idea/
 
 mock_prompt_test_results/
+experiment_results/
