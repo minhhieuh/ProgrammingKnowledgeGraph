@@ -7,4 +7,4 @@ This package contains:
 - Example experiment configurations
 """
 
-from .experiment_runner import ExperimentRunner, ExperimentConfig 
+from .experiment_runner import ExperimentConfig 

@@ -5,6 +5,7 @@ import pandas as pd
 import ast
 import astor
 import signal
+import os
 from human_eval.data import write_jsonl, read_problems
 import voyageai
 import argparse
@@ -130,7 +131,9 @@ def count_correct_answers(norag,bm25rag,bwrag,fwrag):
     return {'norag_count':norag_count,'bm25_count':bm25_count,'bwrag_count':bwrag_count,'fwrag_count':fwrag_count,'ideal':ideal}
 
 def init_voyageai_embedder():
-    voyageai.api_key = "pa-lpHvggxAmQX_QTSipVOhn7qC5Ue_9XRxT_RGwCEFRmE"
+    voyageai.api_key = os.getenv('VOYAGE_API_KEY')
+    if not voyageai.api_key:
+        raise ValueError("VOYAGE_API_KEY environment variable not set")
     vo = voyageai.Client()
     return vo
 

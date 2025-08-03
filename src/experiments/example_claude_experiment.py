@@ -1,20 +1,27 @@
 #!/usr/bin/env python3
 """
-Example script for running PKG experiments with Claude and GPT models
-
-This script demonstrates how to use the experiment runner programmatically
-instead of through the command line interface.
+Example experiment script for running Claude-based PKG experiments.
+This script demonstrates how to run experiments with different configurations.
 """
 
 import os
 import sys
+import logging
 from pathlib import Path
+import time # Added for timing
+from datetime import datetime # Added for timestamp
+
+try:
+    from dotenv import load_dotenv
+    load_dotenv()  # Load environment variables from .env file
+except ImportError:
+    print("Warning: dotenv not installed, relying on system environment variables")
+    pass  # dotenv not installed, rely on system environment variables
 
 # Add the current directory to the path so we can import our modules
 sys.path.append(str(Path(__file__).parent))
 
 from experiment_runner import ExperimentConfig, run_single_experiment, create_summary_report
-import logging
 
 def setup_logging():
     """Setup logging for the experiment"""
@@ -37,6 +44,17 @@ def run_programmatic_experiment(config: ExperimentConfig):
     # Run experiments for each augmentation type
     all_results = {}
     metrics = {}
+    all_provider_metrics = {}  # Store provider metrics for each augmentation type
+    
+    # Track overall experiment timing and costs
+    experiment_start_time = time.time()
+    total_experiment_cost = 0.0
+    total_experiment_tokens = 0
+    
+    print(f"\n🚀 Starting comprehensive experiment with {len(config.augmentation_types)} augmentation types")
+    print(f"📊 Model: {config.model_name} | Benchmark: {config.benchmark}")
+    print(f"💾 Results will be saved to: {output_dir}")
+    print("="*80)
     
     for aug_type in config.augmentation_types:
         print(f"\n🔄 Running {aug_type} experiments...")
@@ -49,14 +67,31 @@ def run_programmatic_experiment(config: ExperimentConfig):
             passed = sum(1 for r in results if r.get('passed', False))
             syntax_valid = sum(1 for r in results if r.get('syntax_valid', False))
             
+            # Extract cost and token information from results
+            aug_cost = sum(r.get('metrics', {}).get('total_cost', 0) for r in results)
+            aug_tokens = sum(r.get('metrics', {}).get('total_tokens', 0) for r in results)
+            
+            # Get provider metrics (should be the same for all results in this augmentation type)
+            provider_metrics = results[0].get('provider_metrics', {}) if results else {}
+            all_provider_metrics[aug_type] = provider_metrics
+            
+            total_experiment_cost += aug_cost
+            total_experiment_tokens += aug_tokens
+            
             metrics[aug_type] = {
                 'pass_at_1': passed / total if total > 0 else 0.0,
                 'syntax_accuracy': syntax_valid / total if total > 0 else 0.0,
                 'passed': passed,
-                'total': total
+                'total': total,
+                'total_cost': aug_cost,
+                'total_tokens': aug_tokens,
+                'avg_cost_per_problem': aug_cost / total if total > 0 else 0.0,
+                'avg_tokens_per_problem': aug_tokens / total if total > 0 else 0.0,
+                'success_rate': provider_metrics.get('success_rate', 0.0),
+                'avg_latency': provider_metrics.get('average_latency', 0.0)
             }
             
-            print(f"✅ {aug_type}: {metrics[aug_type]['pass_at_1']:.1%} ({passed}/{total})")
+            print(f"✅ {aug_type}: {metrics[aug_type]['pass_at_1']:.1%} ({passed}/{total}) | Cost: ${aug_cost:.4f} | Tokens: {aug_tokens:,}")
             
             # Save individual results
             import json
@@ -67,12 +102,33 @@ def run_programmatic_experiment(config: ExperimentConfig):
                     
         except Exception as e:
             logging.error(f"Error in {aug_type}: {e}")
-            metrics[aug_type] = {'pass_at_1': 0.0, 'syntax_accuracy': 0.0, 'passed': 0, 'total': 0}
+            metrics[aug_type] = {
+                'pass_at_1': 0.0, 
+                'syntax_accuracy': 0.0, 
+                'passed': 0, 
+                'total': 0,
+                'total_cost': 0.0,
+                'total_tokens': 0,
+                'avg_cost_per_problem': 0.0,
+                'avg_tokens_per_problem': 0.0,
+                'success_rate': 0.0,
+                'avg_latency': 0.0,
+                'error': str(e)
+            }
+            all_provider_metrics[aug_type] = {}
+    
+    # Calculate experiment totals
+    experiment_end_time = time.time()
+    total_experiment_time = experiment_end_time - experiment_start_time
     
     # Save metrics and create summary
     metrics_file = output_dir / 'metrics.json'
     with open(metrics_file, 'w') as f:
         json.dump(metrics, f, indent=2)
+    
+    # Save detailed metrics using the new comprehensive system
+    from experiment_runner import save_detailed_metrics
+    save_detailed_metrics(output_dir, config, all_results, all_provider_metrics)
     
     # Create summary report
     create_summary_report(output_dir, config, metrics)
@@ -82,10 +138,48 @@ def run_programmatic_experiment(config: ExperimentConfig):
     with open(config_file, 'w') as f:
         import dataclasses
         config_dict = dataclasses.asdict(config)
+        config_dict['api_key'] = '***hidden***'  # Don't save API key
         json.dump(config_dict, f, indent=2)
     
-    print(f"\n✅ Experiment completed!")
-    print(f"📊 Results saved to: {output_dir}")
+    # Print comprehensive experiment summary
+    print("\n" + "="*80)
+    print("🎯 FINAL EXPERIMENT SUMMARY")
+    print("="*80)
+    
+    print(f"⏱️  Total experiment time: {total_experiment_time:.2f} seconds ({total_experiment_time/60:.1f} minutes)")
+    print(f"💰 Total experiment cost: ${total_experiment_cost:.4f}")
+    print(f"🔢 Total tokens used: {total_experiment_tokens:,}")
+    print(f"🤖 Model: {config.model_name}")
+    
+    print(f"\n📊 Results by Augmentation Type:")
+    print("-" * 80)
+    print(f"{'Type':<15} {'Pass Rate':<10} {'Passed':<8} {'Cost':<10} {'Tokens':<10} {'Avg Latency':<12}")
+    print("-" * 80)
+    
+    for aug_type, metric in metrics.items():
+        if 'error' not in metric:
+            print(f"{aug_type:<15} {metric['pass_at_1']:>8.1%} {metric['passed']:>4}/{metric['total']:<3} ${metric['total_cost']:>8.4f} {metric['total_tokens']:>8,} {metric['avg_latency']:>10.2f}s")
+        else:
+            print(f"{aug_type:<15} {'ERROR':<10} {'N/A':<8} {'N/A':<10} {'N/A':<10} {'N/A':<12}")
+    
+    print("-" * 80)
+    
+    # Calculate and display best performing augmentation type
+    valid_metrics = {k: v for k, v in metrics.items() if 'error' not in v and v['total'] > 0}
+    if valid_metrics:
+        best_aug_type = max(valid_metrics.keys(), key=lambda x: valid_metrics[x]['pass_at_1'])
+        best_pass_rate = valid_metrics[best_aug_type]['pass_at_1']
+        print(f"🏆 Best performing: {best_aug_type} ({best_pass_rate:.1%})")
+        
+        # Cost efficiency analysis
+        cost_efficiency = {k: v['pass_at_1'] / max(v['total_cost'], 0.0001) for k, v in valid_metrics.items()}
+        most_efficient = max(cost_efficiency.keys(), key=lambda x: cost_efficiency[x])
+        print(f"💡 Most cost-efficient: {most_efficient} ({cost_efficiency[most_efficient]:.1f} pass rate per $)")
+    
+    print(f"\n📁 All results saved to: {output_dir}")
+    print(f"📋 Check the summary_report.md file for detailed results")
+    print(f"📊 Detailed metrics available in: {output_dir}/detailed_metrics/")
+    print("="*80)
     
     return metrics
 
@@ -104,9 +198,9 @@ def check_prerequisites():
     
     # Check if augmented data exists
     required_files = [
-        'augmented_problems/humaneval_function_wise_relevant_context.jsonl',
-        'augmented_problems/humaneval_blockwise_relevant_context.jsonl',
-        'augmented_problems/bm25_relevant_context_humaneval.jsonl'
+        'src/data/augmented_problems/humaneval_function_wise_relevant_context.jsonl',
+        'src/data/augmented_problems/humaneval_blockwise_relevant_context.jsonl',
+        'src/data/augmented_problems/bm25_relevant_context_humaneval.jsonl'
     ]
     
     missing_files = []
@@ -359,11 +453,22 @@ def run_single_instance_test():
         
         # Generate code
         print("🤖 Generating code...")
-        generated_code = provider.generate(problem_prompt)
+        generated_code, metrics = provider.generate(problem_prompt)
         
         print(f"✅ Code generated successfully!")
         print(f"📏 Generated code length: {len(generated_code)} characters")
         print(f"🔍 First 200 chars: {generated_code[:200]}...")
+        
+        # Display comprehensive metrics
+        print(f"\n📊 Generation Metrics:")
+        print(f"   • Input tokens: {metrics.input_tokens:,}")
+        print(f"   • Output tokens: {metrics.output_tokens:,}")
+        print(f"   • Total tokens: {metrics.total_tokens:,}")
+        print(f"   • Input cost: ${metrics.input_cost:.6f}")
+        print(f"   • Output cost: ${metrics.output_cost:.6f}")
+        print(f"   • Total cost: ${metrics.total_cost:.6f}")
+        print(f"   • Latency: {metrics.latency_seconds:.2f} seconds")
+        print(f"   • Success: {metrics.success}")
         
         # Check syntax
         from experiment_runner import is_syntactically_valid
@@ -377,16 +482,28 @@ def run_single_instance_test():
             'generated_code': generated_code,
             'syntax_valid': is_valid,
             'model': config.model_name,
-            'augmentation_type': 'no_rag'
+            'augmentation_type': 'no_rag',
+            'metrics': metrics._asdict(),
+            'timestamp': datetime.now().isoformat()
         }
         
         results_file = output_dir / "single_test_result.json"
         with open(results_file, 'w') as f:
             json.dump(result, f, indent=2)
         
+        # Get provider summary metrics
+        provider_summary = provider.get_summary_metrics()
+        
+        # Save provider metrics
+        provider_metrics_file = output_dir / "provider_metrics.json"
+        with open(provider_metrics_file, 'w') as f:
+            json.dump(provider_summary, f, indent=2)
+        
         print(f"\n✅ Single instance test completed!")
         print(f"📊 Result saved to: {results_file}")
+        print(f"📈 Provider metrics saved to: {provider_metrics_file}")
         print(f"🎯 This confirms the setup is working correctly!")
+        print(f"💰 Total cost for this test: ${metrics.total_cost:.6f}")
         
     except Exception as e:
         print(f"❌ Test failed: {e}")
