@@ -165,3 +165,8 @@ cython_debug/
 
 mock_prompt_test_results/
 experiment_results/
+experiments/
+mbpp_results/
+humaneval_results/
+
+*.zip

@@ -1,0 +1,5 @@
+Method,bm25_pass_rate,bm25_passed_total,bm25_syntax_rate,bm25_syntax_total,no_rag_pass_rate,no_rag_passed_total,no_rag_syntax_rate,no_rag_syntax_total,reranked_pass_rate,reranked_passed_total,reranked_syntax_rate,reranked_syntax_total,voyage_block_pass_rate,voyage_block_passed_total,voyage_block_syntax_rate,voyage_block_syntax_total,voyage_func_pass_rate,voyage_func_passed_total,voyage_func_syntax_rate,voyage_func_syntax_total
+claude-3-haiku-20240307,71.95%,118/164,98.78%,162/164,74.39%,122/164,100.00%,164/164,73.78%,121/164,100.00%,164/164,67.68%,111/164,100.00%,164/164,71.34%,117/164,98.78%,162/164
+claude-sonnet-4-20250514,95.12%,156/164,99.39%,163/164,96.34%,158/164,98.78%,162/164,95.73%,157/164,100.00%,164/164,94.51%,155/164,97.56%,160/164,95.12%,156/164,99.39%,163/164
+gpt-4o-mini,82.93%,136/164,100.00%,164/164,87.20%,143/164,100.00%,164/164,87.80%,144/164,100.00%,164/164,83.54%,137/164,100.00%,164/164,85.98%,141/164,100.00%,164/164
+gpt-4o,89.02%,146/164,100.00%,164/164,88.41%,145/164,100.00%,164/164,89.63%,147/164,100.00%,164/164,89.63%,147/164,100.00%,164/164,89.02%,146/164,100.00%,164/164

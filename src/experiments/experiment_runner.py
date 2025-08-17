@@ -21,6 +21,7 @@ import ast
 import signal
 import argparse
 import logging
+import random
 from typing import Dict, List, Tuple, Optional, Any, Union, NamedTuple
 from dataclasses import dataclass, asdict
 from pathlib import Path
@@ -285,126 +286,185 @@ class AnthropicProvider(LLMProvider):
         start_time = time.time()
         timestamp = datetime.now().isoformat()
         
-        try:
-            # For backwards compatibility, if prompt contains system instructions, split them
-            # Otherwise, use default system prompt
-            if prompt.startswith("You are an expert Python programmer. Solve the following problem:"):
-                # This is the old format - extract system and user parts using global templates
-                system_prompt = SYSTEM_PROMPT_TEMPLATE
-                user_prompt = prompt.replace("You are an expert Python programmer. Solve the following problem:", "Solve the following problem:")
-            else:
-                # Assume this is already a user prompt - use global system template
-                system_prompt = SYSTEM_PROMPT_TEMPLATE
-                user_prompt = prompt
-            
-            # Log the full prompt details
-            logging.info(f"🔍 FULL PROMPT DETAILS:")
-            logging.info(f"📋 System Prompt: {system_prompt}")
-            logging.info(f"👤 User Prompt (first 200 chars): {user_prompt[:200]}...")
-            logging.info(f"📏 System Prompt Length: {len(system_prompt)} chars")
-            logging.info(f"📏 User Prompt Length: {len(user_prompt)} chars")
-            
-            # Estimate input tokens for both system and user prompts
-            system_tokens = estimate_tokens_anthropic(system_prompt)
-            user_tokens = estimate_tokens_anthropic(user_prompt)
-            total_input_tokens = system_tokens + user_tokens
-            
-            logging.info(f"🔢 Estimated Tokens - System: {system_tokens}, User: {user_tokens}, Total: {total_input_tokens}")
-            
-            response = self.client.messages.create(
-                model=self.config.model_name,
-                max_tokens=self.config.max_tokens,
-                temperature=self.config.temperature,
-                system=system_prompt,  # Use system parameter for Anthropic
-                messages=[{"role": "user", "content": user_prompt}]
-            )
-            
-#             response = """
-# def dummy_function():
-#     return "Hello, world!"
-# """
-            
-            end_time = time.time()
-            latency = end_time - start_time
-            
-            # Extract response text
-            if hasattr(response, 'content') and response.content:
-                # Anthropic Message object has a content array with text blocks
-                response_text = response.content[0].text if response.content[0].type == 'text' else ""
-            else:
-                # Fallback for other response formats
-                response_text = str(response)
-            
-            # Log response details
-            logging.info(f"✅ Response received (first 100 chars): {response_text[:100]}...")
-            logging.info(f"📏 Response Length: {len(response_text)} chars")
-            
-            # Get actual token usage from response
-            actual_input_tokens = response.usage.input_tokens if hasattr(response, 'usage') else total_input_tokens
-            actual_output_tokens = response.usage.output_tokens if hasattr(response, 'usage') else estimate_tokens_anthropic(response_text)
-            total_tokens = actual_input_tokens + actual_output_tokens
-            
-            logging.info(f"🔢 Actual Tokens - Input: {actual_input_tokens}, Output: {actual_output_tokens}, Total: {total_tokens}")
-            
-            # Calculate costs
-            input_cost, output_cost, total_cost = calculate_cost(
-                actual_input_tokens, actual_output_tokens, self.config.model_name
-            )
-            
-            logging.info(f"💰 Cost - Input: ${input_cost:.6f}, Output: ${output_cost:.6f}, Total: ${total_cost:.6f}")
-            
-            metrics = GenerationMetrics(
-                input_tokens=actual_input_tokens,
-                output_tokens=actual_output_tokens,
-                total_tokens=total_tokens,
-                input_cost=input_cost,
-                output_cost=output_cost,
-                total_cost=total_cost,
-                latency_seconds=latency,
-                timestamp=timestamp,
-                model_name=self.config.model_name,
-                success=True,
-                error_message=""
-            )
-            
-            # Update total metrics
-            self.total_metrics['total_requests'] += 1
-            self.total_metrics['successful_requests'] += 1
-            self.total_metrics['total_input_tokens'] += actual_input_tokens
-            self.total_metrics['total_output_tokens'] += actual_output_tokens
-            self.total_metrics['total_cost'] += total_cost
-            self.total_metrics['total_latency'] += latency
-            self.total_metrics['requests'].append(metrics._asdict())
-            
-            return response_text, metrics
-            
-        except Exception as e:
-            end_time = time.time()
-            latency = end_time - start_time
-            
-            logging.error(f"❌ Anthropic API error: {e}")
-            
-            metrics = GenerationMetrics(
-                input_tokens=estimate_tokens_anthropic(prompt),
-                output_tokens=0,
-                total_tokens=estimate_tokens_anthropic(prompt),
-                input_cost=0.0,
-                output_cost=0.0,
-                total_cost=0.0,
-                latency_seconds=latency,
-                timestamp=timestamp,
-                model_name=self.config.model_name,
-                success=False,
-                error_message=str(e)
-            )
-            
-            # Update total metrics
-            self.total_metrics['total_requests'] += 1
-            self.total_metrics['failed_requests'] += 1
-            self.total_metrics['total_latency'] += latency
-            self.total_metrics['requests'].append(metrics._asdict())
-            
-            return "", metrics
+        # Retry configuration
+        max_retries = 5
+        base_delay = 10  # Start with 10 seconds as requested
+        max_delay = 300  # Maximum delay of 5 minutes
+        
+        for attempt in range(max_retries + 1):
+            try:
+                # For backwards compatibility, if prompt contains system instructions, split them
+                # Otherwise, use default system prompt
+                if prompt.startswith("You are an expert Python programmer. Solve the following problem:"):
+                    # This is the old format - extract system and user parts using global templates
+                    system_prompt = SYSTEM_PROMPT_TEMPLATE
+                    user_prompt = prompt.replace("You are an expert Python programmer. Solve the following problem:", "Solve the following problem:")
+                else:
+                    # Assume this is already a user prompt - use global system template
+                    system_prompt = SYSTEM_PROMPT_TEMPLATE
+                    user_prompt = prompt
+                
+                # Log the full prompt details (only on first attempt to avoid spam)
+                if attempt == 0:
+                    logging.info(f"🔍 FULL PROMPT DETAILS:")
+                    logging.info(f"📋 System Prompt: {system_prompt}")
+                    logging.info(f"👤 User Prompt (first 200 chars): {user_prompt[:200]}...")
+                    logging.info(f"📏 System Prompt Length: {len(system_prompt)} chars")
+                    logging.info(f"📏 User Prompt Length: {len(user_prompt)} chars")
+                
+                # Estimate input tokens for both system and user prompts
+                system_tokens = estimate_tokens_anthropic(system_prompt)
+                user_tokens = estimate_tokens_anthropic(user_prompt)
+                total_input_tokens = system_tokens + user_tokens
+                
+                if attempt == 0:
+                    logging.info(f"🔢 Estimated Tokens - System: {system_tokens}, User: {user_tokens}, Total: {total_input_tokens}")
+                
+                response = self.client.messages.create(
+                    model=self.config.model_name,
+                    max_tokens=self.config.max_tokens,
+                    temperature=self.config.temperature,
+                    system=system_prompt,  # Use system parameter for Anthropic
+                    messages=[{"role": "user", "content": user_prompt}]
+                )
+                
+                end_time = time.time()
+                latency = end_time - start_time
+                
+                # Extract response text
+                if hasattr(response, 'content') and response.content:
+                    # Anthropic Message object has a content array with text blocks
+                    response_text = response.content[0].text if response.content[0].type == 'text' else ""
+                else:
+                    # Fallback for other response formats
+                    response_text = str(response)
+                
+                # Log response details
+                logging.info(f"✅ Response received (first 100 chars): {response_text[:100]}...")
+                logging.info(f"📏 Response Length: {len(response_text)} chars")
+                
+                # Get actual token usage from response
+                actual_input_tokens = response.usage.input_tokens if hasattr(response, 'usage') else total_input_tokens
+                actual_output_tokens = response.usage.output_tokens if hasattr(response, 'usage') else estimate_tokens_anthropic(response_text)
+                total_tokens = actual_input_tokens + actual_output_tokens
+                
+                logging.info(f"🔢 Actual Tokens - Input: {actual_input_tokens}, Output: {actual_output_tokens}, Total: {total_tokens}")
+                
+                # Calculate costs
+                input_cost, output_cost, total_cost = calculate_cost(
+                    actual_input_tokens, actual_output_tokens, self.config.model_name
+                )
+                
+                logging.info(f"💰 Cost - Input: ${input_cost:.6f}, Output: ${output_cost:.6f}, Total: ${total_cost:.6f}")
+                
+                metrics = GenerationMetrics(
+                    input_tokens=actual_input_tokens,
+                    output_tokens=actual_output_tokens,
+                    total_tokens=total_tokens,
+                    input_cost=input_cost,
+                    output_cost=output_cost,
+                    total_cost=total_cost,
+                    latency_seconds=latency,
+                    timestamp=timestamp,
+                    model_name=self.config.model_name,
+                    success=True,
+                    error_message=""
+                )
+                
+                # Update total metrics
+                self.total_metrics['total_requests'] += 1
+                self.total_metrics['successful_requests'] += 1
+                self.total_metrics['total_input_tokens'] += actual_input_tokens
+                self.total_metrics['total_output_tokens'] += actual_output_tokens
+                self.total_metrics['total_cost'] += total_cost
+                self.total_metrics['total_latency'] += latency
+                self.total_metrics['requests'].append(metrics._asdict())
+                
+                return response_text, metrics
+                
+            except Exception as e:
+                error_str = str(e)
+                
+                # Check if this is a rate limit error
+                is_rate_limit_error = (
+                    "rate_limit_error" in error_str.lower() or 
+                    "rate limit" in error_str.lower() or
+                    "429" in error_str or
+                    "too many requests" in error_str.lower()
+                )
+                
+                if is_rate_limit_error and attempt < max_retries:
+                    # Calculate delay with exponential backoff and jitter
+                    delay = min(base_delay * (2 ** attempt), max_delay)
+                    # Add jitter (±25% randomization) to avoid thundering herd
+                    jitter = delay * 0.25 * (2 * random.random() - 1)
+                    actual_delay = delay + jitter
+                    
+                    logging.warning(f"⚠️ Rate limit error (attempt {attempt + 1}/{max_retries + 1}): {e}")
+                    logging.info(f"⏳ Waiting {actual_delay:.1f} seconds before retry...")
+                    
+                    time.sleep(actual_delay)
+                    continue
+                else:
+                    # Either not a rate limit error, or we've exhausted retries
+                    end_time = time.time()
+                    latency = end_time - start_time
+                    
+                    if is_rate_limit_error:
+                        logging.error(f"❌ Anthropic API rate limit error - exhausted all {max_retries + 1} attempts: {e}")
+                    else:
+                        logging.error(f"❌ Anthropic API error: {e}")
+                    
+                    metrics = GenerationMetrics(
+                        input_tokens=estimate_tokens_anthropic(prompt),
+                        output_tokens=0,
+                        total_tokens=estimate_tokens_anthropic(prompt),
+                        input_cost=0.0,
+                        output_cost=0.0,
+                        total_cost=0.0,
+                        latency_seconds=latency,
+                        timestamp=timestamp,
+                        model_name=self.config.model_name,
+                        success=False,
+                        error_message=error_str
+                    )
+                    
+                    # Update total metrics
+                    self.total_metrics['total_requests'] += 1
+                    self.total_metrics['failed_requests'] += 1
+                    self.total_metrics['total_latency'] += latency
+                    self.total_metrics['requests'].append(metrics._asdict())
+                    
+                    return "", metrics
+        
+        # This should never be reached, but just in case
+        end_time = time.time()
+        latency = end_time - start_time
+        
+        error_msg = f"Exhausted all retry attempts ({max_retries + 1})"
+        logging.error(f"❌ {error_msg}")
+        
+        metrics = GenerationMetrics(
+            input_tokens=estimate_tokens_anthropic(prompt),
+            output_tokens=0,
+            total_tokens=estimate_tokens_anthropic(prompt),
+            input_cost=0.0,
+            output_cost=0.0,
+            total_cost=0.0,
+            latency_seconds=latency,
+            timestamp=timestamp,
+            model_name=self.config.model_name,
+            success=False,
+            error_message=error_msg
+        )
+        
+        # Update total metrics
+        self.total_metrics['total_requests'] += 1
+        self.total_metrics['failed_requests'] += 1
+        self.total_metrics['total_latency'] += latency
+        self.total_metrics['requests'].append(metrics._asdict())
+        
+        return "", metrics
 
 
 class OpenAIProvider(LLMProvider):
@@ -419,134 +479,201 @@ class OpenAIProvider(LLMProvider):
         start_time = time.time()
         timestamp = datetime.now().isoformat()
         
-        try:
-            # For OpenAI, we'll treat the entire prompt as user content since OpenAI handles system messages differently
-            # Extract system instructions if present in the prompt
-            if prompt.startswith("You are an expert Python programmer. Solve the following problem:"):
-                # This is the old format - we can optionally split for OpenAI too using global templates
-                system_prompt = SYSTEM_PROMPT_TEMPLATE
-                user_prompt = prompt.replace("You are an expert Python programmer. Solve the following problem:", "Solve the following problem:")
+        # Retry configuration
+        max_retries = 5
+        base_delay = 10  # Start with 10 seconds as requested
+        max_delay = 300  # Maximum delay of 5 minutes
+        
+        for attempt in range(max_retries + 1):
+            try:
+                # For OpenAI, we'll treat the entire prompt as user content since OpenAI handles system messages differently
+                # Extract system instructions if present in the prompt
+                if prompt.startswith("You are an expert Python programmer. Solve the following problem:"):
+                    # This is the old format - we can optionally split for OpenAI too using global templates
+                    system_prompt = SYSTEM_PROMPT_TEMPLATE
+                    user_prompt = prompt.replace("You are an expert Python programmer. Solve the following problem:", "Solve the following problem:")
+                    
+                    # For OpenAI, we'll use both system and user messages
+                    messages = [
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_prompt}
+                    ]
+                else:
+                    # Treat as user prompt only
+                    system_prompt = ""
+                    user_prompt = prompt
+                    messages = [{"role": "user", "content": prompt}]
                 
-                # For OpenAI, we'll use both system and user messages
-                messages = [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt}
-                ]
-            else:
-                # Treat as user prompt only
-                system_prompt = ""
-                user_prompt = prompt
-                messages = [{"role": "user", "content": prompt}]
-            
-            # Log the full prompt details
-            logging.info(f"🔍 FULL PROMPT DETAILS (OpenAI):")
-            if system_prompt:
-                logging.info(f"📋 System Prompt: {system_prompt}")
-                logging.info(f"📏 System Prompt Length: {len(system_prompt)} chars")
-            logging.info(f"👤 User Prompt (first 200 chars): {user_prompt[:200]}...")
-            logging.info(f"📏 User Prompt Length: {len(user_prompt)} chars")
-            
-            # Estimate input tokens
-            input_tokens = count_tokens_openai(prompt, self.config.model_name)
-            logging.info(f"🔢 Estimated Input Tokens: {input_tokens}")
-            
-            # response = self.client.chat.completions.create(
-            #     model=self.config.model_name,
-            #     messages=messages,
-            #     temperature=self.config.temperature,
-            #     max_tokens=self.config.max_tokens
-            # )
-            
-            response = "LLM response"
-            
-            end_time = time.time()
-            latency = end_time - start_time
-            
-            # Extract response text
-            if hasattr(response, 'choices') and response.choices:
-                # OpenAI response object has choices array with message content
-                response_text = response.choices[0].message.content or ""
-            elif isinstance(response, dict):
-                response_text = response.get('choices', [{}])[0].get('message', {}).get('content', "")
-            else:
-                # Fallback for other response formats
-                response_text = str(response)
-            
-            # Log response details
-            logging.info(f"✅ Response received (first 100 chars): {response_text[:100]}...")
-            logging.info(f"📏 Response Length: {len(response_text)} chars")
-            
-            # Get actual token usage from response
-            if hasattr(response, 'usage') and response.usage:
-                actual_input_tokens = response.usage.prompt_tokens
-                actual_output_tokens = response.usage.completion_tokens
-            else:
-                # Fallback when response is not an API object (e.g., during testing)
-                actual_input_tokens = input_tokens
-                actual_output_tokens = count_tokens_openai(response_text, self.config.model_name)
-            total_tokens = actual_input_tokens + actual_output_tokens
-            
-            logging.info(f"🔢 Actual Tokens - Input: {actual_input_tokens}, Output: {actual_output_tokens}, Total: {total_tokens}")
-            
-            # Calculate costs
-            input_cost, output_cost, total_cost = calculate_cost(
-                actual_input_tokens, actual_output_tokens, self.config.model_name
-            )
-            
-            logging.info(f"💰 Cost - Input: ${input_cost:.6f}, Output: ${output_cost:.6f}, Total: ${total_cost:.6f}")
-            
-            metrics = GenerationMetrics(
-                input_tokens=actual_input_tokens,
-                output_tokens=actual_output_tokens,
-                total_tokens=total_tokens,
-                input_cost=input_cost,
-                output_cost=output_cost,
-                total_cost=total_cost,
-                latency_seconds=latency,
-                timestamp=timestamp,
-                model_name=self.config.model_name,
-                success=True,
-                error_message=""
-            )
-            
-            # Update total metrics
-            self.total_metrics['total_requests'] += 1
-            self.total_metrics['successful_requests'] += 1
-            self.total_metrics['total_input_tokens'] += actual_input_tokens
-            self.total_metrics['total_output_tokens'] += actual_output_tokens
-            self.total_metrics['total_cost'] += total_cost
-            self.total_metrics['total_latency'] += latency
-            self.total_metrics['requests'].append(metrics._asdict())
-            
-            return response_text, metrics
-            
-        except Exception as e:
-            end_time = time.time()
-            latency = end_time - start_time
-            
-            logging.error(f"❌ OpenAI API error: {e}")
-            
-            metrics = GenerationMetrics(
-                input_tokens=count_tokens_openai(prompt, self.config.model_name),
-                output_tokens=0,
-                total_tokens=count_tokens_openai(prompt, self.config.model_name),
-                input_cost=0.0,
-                output_cost=0.0,
-                total_cost=0.0,
-                latency_seconds=latency,
-                timestamp=timestamp,
-                model_name=self.config.model_name,
-                success=False,
-                error_message=str(e)
-            )
-            
-            # Update total metrics
-            self.total_metrics['total_requests'] += 1
-            self.total_metrics['failed_requests'] += 1
-            self.total_metrics['total_latency'] += latency
-            self.total_metrics['requests'].append(metrics._asdict())
-            
-            return "", metrics
+                # Log the full prompt details (only on first attempt to avoid spam)
+                if attempt == 0:
+                    logging.info(f"🔍 FULL PROMPT DETAILS (OpenAI):")
+                    if system_prompt:
+                        logging.info(f"📋 System Prompt: {system_prompt}")
+                        logging.info(f"📏 System Prompt Length: {len(system_prompt)} chars")
+                    logging.info(f"👤 User Prompt (first 200 chars): {user_prompt[:200]}...")
+                    logging.info(f"📏 User Prompt Length: {len(user_prompt)} chars")
+                
+                # Estimate input tokens
+                input_tokens = count_tokens_openai(prompt, self.config.model_name)
+                if attempt == 0:
+                    logging.info(f"🔢 Estimated Input Tokens: {input_tokens}")
+                
+                response = self.client.chat.completions.create(
+                    model=self.config.model_name,
+                    messages=messages,
+                    temperature=self.config.temperature,
+                    max_tokens=self.config.max_tokens
+                )
+                
+                time.sleep(0.5)
+                
+                # response = "LLM response"
+                
+                end_time = time.time()
+                latency = end_time - start_time
+                
+                # Extract response text
+                if hasattr(response, 'choices') and response.choices:
+                    # OpenAI response object has choices array with message content
+                    response_text = response.choices[0].message.content or ""
+                elif isinstance(response, dict):
+                    response_text = response.get('choices', [{}])[0].get('message', {}).get('content', "")
+                else:
+                    # Fallback for other response formats
+                    response_text = str(response)
+                
+                # Log response details
+                logging.info(f"✅ Response received (first 100 chars): {response_text[:100]}...")
+                logging.info(f"📏 Response Length: {len(response_text)} chars")
+                
+                # Get actual token usage from response
+                if hasattr(response, 'usage') and response.usage:
+                    actual_input_tokens = response.usage.prompt_tokens
+                    actual_output_tokens = response.usage.completion_tokens
+                else:
+                    # Fallback when response is not an API object (e.g., during testing)
+                    actual_input_tokens = input_tokens
+                    actual_output_tokens = count_tokens_openai(response_text, self.config.model_name)
+                total_tokens = actual_input_tokens + actual_output_tokens
+                
+                logging.info(f"🔢 Actual Tokens - Input: {actual_input_tokens}, Output: {actual_output_tokens}, Total: {total_tokens}")
+                
+                # Calculate costs
+                input_cost, output_cost, total_cost = calculate_cost(
+                    actual_input_tokens, actual_output_tokens, self.config.model_name
+                )
+                
+                logging.info(f"💰 Cost - Input: ${input_cost:.6f}, Output: ${output_cost:.6f}, Total: ${total_cost:.6f}")
+                
+                metrics = GenerationMetrics(
+                    input_tokens=actual_input_tokens,
+                    output_tokens=actual_output_tokens,
+                    total_tokens=total_tokens,
+                    input_cost=input_cost,
+                    output_cost=output_cost,
+                    total_cost=total_cost,
+                    latency_seconds=latency,
+                    timestamp=timestamp,
+                    model_name=self.config.model_name,
+                    success=True,
+                    error_message=""
+                )
+                
+                # Update total metrics
+                self.total_metrics['total_requests'] += 1
+                self.total_metrics['successful_requests'] += 1
+                self.total_metrics['total_input_tokens'] += actual_input_tokens
+                self.total_metrics['total_output_tokens'] += actual_output_tokens
+                self.total_metrics['total_cost'] += total_cost
+                self.total_metrics['total_latency'] += latency
+                self.total_metrics['requests'].append(metrics._asdict())
+                
+                return response_text, metrics
+                
+            except Exception as e:
+                error_str = str(e)
+                
+                # Check if this is a rate limit error (OpenAI specific patterns)
+                is_rate_limit_error = (
+                    "rate_limit_exceeded" in error_str.lower() or
+                    "rate limit" in error_str.lower() or
+                    "429" in error_str or
+                    "too many requests" in error_str.lower() or
+                    "quota exceeded" in error_str.lower()
+                )
+                
+                if is_rate_limit_error and attempt < max_retries:
+                    # Calculate delay with exponential backoff and jitter
+                    delay = min(base_delay * (2 ** attempt), max_delay)
+                    # Add jitter (±25% randomization) to avoid thundering herd
+                    jitter = delay * 0.25 * (2 * random.random() - 1)
+                    actual_delay = delay + jitter
+                    
+                    logging.warning(f"⚠️ Rate limit error (attempt {attempt + 1}/{max_retries + 1}): {e}")
+                    logging.info(f"⏳ Waiting {actual_delay:.1f} seconds before retry...")
+                    
+                    time.sleep(actual_delay)
+                    continue
+                else:
+                    # Either not a rate limit error, or we've exhausted retries
+                    end_time = time.time()
+                    latency = end_time - start_time
+                    
+                    if is_rate_limit_error:
+                        logging.error(f"❌ OpenAI API rate limit error - exhausted all {max_retries + 1} attempts: {e}")
+                    else:
+                        logging.error(f"❌ OpenAI API error: {e}")
+                    
+                    metrics = GenerationMetrics(
+                        input_tokens=count_tokens_openai(prompt, self.config.model_name),
+                        output_tokens=0,
+                        total_tokens=count_tokens_openai(prompt, self.config.model_name),
+                        input_cost=0.0,
+                        output_cost=0.0,
+                        total_cost=0.0,
+                        latency_seconds=latency,
+                        timestamp=timestamp,
+                        model_name=self.config.model_name,
+                        success=False,
+                        error_message=error_str
+                    )
+                    
+                    # Update total metrics
+                    self.total_metrics['total_requests'] += 1
+                    self.total_metrics['failed_requests'] += 1
+                    self.total_metrics['total_latency'] += latency
+                    self.total_metrics['requests'].append(metrics._asdict())
+                    
+                    return "", metrics
+        
+        # This should never be reached, but just in case
+        end_time = time.time()
+        latency = end_time - start_time
+        
+        error_msg = f"Exhausted all retry attempts ({max_retries + 1})"
+        logging.error(f"❌ {error_msg}")
+        
+        metrics = GenerationMetrics(
+            input_tokens=count_tokens_openai(prompt, self.config.model_name),
+            output_tokens=0,
+            total_tokens=count_tokens_openai(prompt, self.config.model_name),
+            input_cost=0.0,
+            output_cost=0.0,
+            total_cost=0.0,
+            latency_seconds=latency,
+            timestamp=timestamp,
+            model_name=self.config.model_name,
+            success=False,
+            error_message=error_msg
+        )
+        
+        # Update total metrics
+        self.total_metrics['total_requests'] += 1
+        self.total_metrics['failed_requests'] += 1
+        self.total_metrics['total_latency'] += latency
+        self.total_metrics['requests'].append(metrics._asdict())
+        
+        return "", metrics
 
 
 def get_provider(config: ExperimentConfig) -> LLMProvider:
@@ -566,10 +693,15 @@ def extract_python_code(text: str) -> str:
     """Extract Python code from generated text"""
     import re
     
-    # First try to find code in [PYTHON] tags
+    # First try to find code in [PYTHON] tags with closing [/PYTHON]
     python_match = re.search(r'\[PYTHON\](.*?)\[/PYTHON\]', text, re.DOTALL)
     if python_match:
         return python_match.group(1).strip()
+    
+    # Try to find code between two [PYTHON] tags
+    python_match_double = re.search(r'\[PYTHON\](.*?)\[PYTHON\]', text, re.DOTALL)
+    if python_match_double:
+        return python_match_double.group(1).strip()
     
     # Try to find code in ```python blocks
     python_block = re.search(r'```python\n(.*?)```', text, re.DOTALL)
@@ -704,8 +836,103 @@ def is_syntactically_valid(code: str) -> bool:
         return False
 
 
+def process_single_problem(problem_data: Tuple[str, Dict, str, Optional[str], ExperimentConfig]) -> Dict:
+    """
+    Process a single problem in a worker process.
+    
+    Args:
+        problem_data: Tuple containing (task_id, problem_dict, augmentation_type, context, config)
+    
+    Returns:
+        Dictionary containing the result for this problem
+    """
+    task_id, problem_dict, augmentation_type, context, config = problem_data
+    
+    try:
+        # Initialize LLM provider in this worker process
+        provider = get_provider(config)
+        
+        problem_prompt = problem_dict['prompt']
+        
+        # Create prompt
+        if augmentation_type != 'no_rag' and context:
+            prompt = create_full_prompt(problem_prompt, context)
+        else:
+            prompt = create_full_prompt(problem_prompt)
+        
+        # Generate solution
+        raw_output, metrics = provider.generate(prompt)
+        generated_code = extract_python_code(raw_output)
+        
+        # Extract system and user prompts for logging
+        system_prompt, user_prompt = extract_system_and_user_prompts(prompt)
+        
+        # Evaluate solution
+        is_valid = is_syntactically_valid(generated_code)
+        passed = False
+        
+        if is_valid:
+            # For evaluation, we need the full problems dict, but we'll pass just this problem
+            single_problem_dict = {task_id: problem_dict}
+            passed = evaluate_solution(generated_code, task_id, single_problem_dict)
+        
+        result = {
+            'task_id': task_id,
+            'prompt': problem_prompt,
+            'full_prompt': prompt,
+            'system_prompt': system_prompt,
+            'user_prompt': user_prompt,
+            'augmentation_type': augmentation_type,
+            'raw_output': raw_output,
+            'generated_code': generated_code,
+            'is_syntactically_valid': is_valid,
+            'passed': passed,
+            'augmented_context': context if context else "",
+            'metrics': metrics._asdict(),
+            'processing_success': True,
+            'error': None
+        }
+        
+        return result
+        
+    except Exception as e:
+        # Create failed result
+        failed_metrics = GenerationMetrics(
+            input_tokens=0,
+            output_tokens=0,
+            total_tokens=0,
+            input_cost=0.0,
+            output_cost=0.0,
+            total_cost=0.0,
+            latency_seconds=0.0,
+            timestamp=datetime.now().isoformat(),
+            model_name=config.model_name,
+            success=False,
+            error_message=str(e)
+        )
+        
+        result = {
+            'task_id': task_id,
+            'prompt': problem_dict.get('prompt', ''),
+            'full_prompt': '',
+            'system_prompt': '',
+            'user_prompt': '',
+            'augmentation_type': augmentation_type,
+            'raw_output': "",
+            'generated_code': "",
+            'is_syntactically_valid': False,
+            'passed': False,
+            'augmented_context': context if context else "",
+            'metrics': failed_metrics._asdict(),
+            'processing_success': False,
+            'error': str(e)
+        }
+        
+        return result
+
+
 def run_single_experiment(config: ExperimentConfig, augmentation_type: str) -> tuple[List[Dict], dict]:
-    """Run experiment for a single augmentation type with comprehensive metrics tracking"""
+    """Run experiment for a single augmentation type with comprehensive metrics tracking using 28 worker processes"""
     experiment_start_time = time.time()
     logging.info(f"Running experiment: {config.model_name} with {augmentation_type}")
     
@@ -717,17 +944,13 @@ def run_single_experiment(config: ExperimentConfig, augmentation_type: str) -> t
     else:
         raise ValueError(f"Unknown benchmark: {config.benchmark}")
     
-    problems = {k: v for k, v in list(problems.items())[150:151]}
+    # problems = {k: v for k, v in list(problems.items())[1:10]}
     
     # Load augmented data if needed
     augmented_data = {}
     if augmentation_type != 'no_rag':
         augmented_data = load_augmented_data(augmentation_type, config.benchmark)
     
-    # Initialize LLM provider
-    provider = get_provider(config)
-    
-    results = []
     total_problems = len(problems)
     
     # Metrics tracking
@@ -746,133 +969,115 @@ def run_single_experiment(config: ExperimentConfig, augmentation_type: str) -> t
         'individual_metrics': []
     }
     
-    logging.info(f"🚀 Starting {augmentation_type} experiment with {total_problems} problems")
+    logging.info(f"🚀 Starting {augmentation_type} experiment with {total_problems} problems using 28 workers")
     logging.info(f"💰 Model pricing: Input=${MODEL_PRICING.get(config.model_name, {}).get('input', 'N/A')}/1M tokens, Output=${MODEL_PRICING.get(config.model_name, {}).get('output', 'N/A')}/1M tokens")
     
-    for i, (task_id, problem_data) in enumerate(tqdm(problems.items(), desc=f"Processing {augmentation_type}"), 1):
-        problem_prompt = problem_data['prompt']
-        
-        # Get augmented context if available
+    # Prepare tasks for parallel processing
+    tasks = []
+    for task_id, problem_data in problems.items():
         context = augmented_data.get(task_id, None) if augmentation_type != 'no_rag' else None
+        task = (task_id, problem_data, augmentation_type, context, config)
+        tasks.append(task)
+    
+    results = []
+    
+    # Process problems in parallel using ProcessPoolExecutor
+    with ProcessPoolExecutor(max_workers=28) as executor:
+        # Submit all tasks
+        future_to_task = {executor.submit(process_single_problem, task): task for task in tasks}
         
-        # Log prompt creation details
-        logging.info(f"\n🔄 Processing {task_id} ({i}/{total_problems})")
-        logging.info(f"📝 Problem: {problem_prompt[:100]}...")
-        logging.info(f"🔧 Augmentation Type: {augmentation_type}")
-        if context:
-            logging.info(f"📚 Augmented Context Length: {len(context)} chars")
-            logging.info(f"📚 Augmented Context Preview: {context[:150]}...")
-        else:
-            logging.info(f"📚 No augmented context (using {augmentation_type})")
-        
-        # Create prompt
-        if augmentation_type != 'no_rag' and context:
-            # Create the full prompt using global templates
-            prompt = create_full_prompt(problem_prompt, context)
-        else:
-            # No augmentation - use global templates
-            prompt = create_full_prompt(problem_prompt)
-        
-        logging.info(f"📋 Created prompt length: {len(prompt)} chars")
-        
-        # Generate solution
-        try:
-            raw_output, metrics = provider.generate(prompt)
-            generated_code = extract_python_code(raw_output)
-            
-            # Save detailed prompt information
-            system_prompt, user_prompt = extract_system_and_user_prompts(prompt)
-            output_dir = Path(config.output_dir) / config.experiment_name
-            prompt_log = save_prompt_details(output_dir, task_id, system_prompt, user_prompt, 
-                                           raw_output, augmentation_type, metrics)
-            
-            # Evaluate solution
-            is_valid = is_syntactically_valid(generated_code)
-            passed = False
-            
-            if is_valid:
-                passed = evaluate_solution(generated_code, task_id, problems)
-            
-            # Update experiment metrics
-            experiment_metrics['successful_generations'] += 1
-            if is_valid:
-                experiment_metrics['syntax_valid_count'] += 1
-            if passed:
-                experiment_metrics['passed_count'] += 1
-            experiment_metrics['total_cost'] += metrics.total_cost
-            experiment_metrics['total_tokens'] += metrics.total_tokens
-            experiment_metrics['individual_metrics'].append(metrics._asdict())
-            
-            result = {
-                'task_id': task_id,
-                'prompt': problem_prompt,
-                'full_prompt': prompt,
-                'system_prompt': system_prompt,
-                'user_prompt': user_prompt,
-                'augmentation_type': augmentation_type,
-                'raw_output': raw_output,
-                'generated_code': generated_code,
-                'is_syntactically_valid': is_valid,
-                'passed': passed,
-                'augmented_context': context if context else "",
-                'metrics': metrics._asdict(),
-                'prompt_log_file': str(prompt_log.get('log_file', ''))
-            }
-            
-            results.append(result)
-            
-            # Log progress every 10 problems or on completion
-            if i % 10 == 0 or i == total_problems:
-                current_pass_rate = experiment_metrics['passed_count'] / i * 100
-                current_cost = experiment_metrics['total_cost']
-                avg_latency = sum(m['latency_seconds'] for m in experiment_metrics['individual_metrics']) / len(experiment_metrics['individual_metrics'])
+        # Process completed tasks with progress bar
+        for i, future in enumerate(tqdm(as_completed(future_to_task), total=len(tasks), desc=f"Processing {augmentation_type}"), 1):
+            try:
+                result = future.result()
+                task_id = result['task_id']
                 
-                logging.info(f"📊 Progress {i}/{total_problems}: Pass rate: {current_pass_rate:.1f}%, Cost: ${current_cost:.4f}, Avg latency: {avg_latency:.2f}s")
-            
-            logging.debug(f"✅ {task_id}: {'PASSED' if passed else 'FAILED'} (${metrics.total_cost:.6f}, {metrics.latency_seconds:.2f}s)")
-            
-        except Exception as e:
-            logging.error(f"❌ Error processing {task_id}: {e}")
-            
-            # Create empty metrics for failed requests
-            failed_metrics = GenerationMetrics(
-                input_tokens=0,
-                output_tokens=0,
-                total_tokens=0,
-                input_cost=0.0,
-                output_cost=0.0,
-                total_cost=0.0,
-                latency_seconds=0.0,
-                timestamp=datetime.now().isoformat(),
-                model_name=config.model_name,
-                success=False,
-                error_message=str(e)
-            )
-            
-            experiment_metrics['failed_generations'] += 1
-            experiment_metrics['individual_metrics'].append(failed_metrics._asdict())
-            
-            result = {
-                'task_id': task_id,
-                'prompt': problem_prompt,
-                'augmentation_type': augmentation_type,
-                'raw_output': "",
-                'generated_code': "",
-                'is_syntactically_valid': False,
-                'passed': False,
-                'error': str(e),
-                'augmented_context': context if context else "",
-                'metrics': failed_metrics._asdict()
-            }
-            results.append(result)
+                # Save detailed prompt information if processing was successful
+                if result['processing_success']:
+                    output_dir = Path(config.output_dir) / config.experiment_name
+                    metrics_obj = GenerationMetrics(**result['metrics'])
+                    prompt_log = save_prompt_details(output_dir, task_id, result['system_prompt'], 
+                                                   result['user_prompt'], result['raw_output'], 
+                                                   augmentation_type, metrics_obj)
+                    result['prompt_log_file'] = str(prompt_log.get('log_file', ''))
+                
+                # Update experiment metrics
+                if result['processing_success']:
+                    experiment_metrics['successful_generations'] += 1
+                else:
+                    experiment_metrics['failed_generations'] += 1
+                    
+                if result['is_syntactically_valid']:
+                    experiment_metrics['syntax_valid_count'] += 1
+                if result['passed']:
+                    experiment_metrics['passed_count'] += 1
+                    
+                experiment_metrics['total_cost'] += result['metrics']['total_cost']
+                experiment_metrics['total_tokens'] += result['metrics']['total_tokens']
+                experiment_metrics['individual_metrics'].append(result['metrics'])
+                
+                results.append(result)
+                
+                # Log progress every 10 problems or on completion
+                if i % 10 == 0 or i == total_problems:
+                    current_pass_rate = experiment_metrics['passed_count'] / i * 100
+                    current_cost = experiment_metrics['total_cost']
+                    avg_latency = sum(m['latency_seconds'] for m in experiment_metrics['individual_metrics']) / len(experiment_metrics['individual_metrics'])
+                    
+                    logging.info(f"📊 Progress {i}/{total_problems}: Pass rate: {current_pass_rate:.1f}%, Cost: ${current_cost:.4f}, Avg latency: {avg_latency:.2f}s")
+                
+                if result['processing_success']:
+                    logging.debug(f"✅ {task_id}: {'PASSED' if result['passed'] else 'FAILED'} (${result['metrics']['total_cost']:.6f}, {result['metrics']['latency_seconds']:.2f}s)")
+                else:
+                    logging.error(f"❌ Error processing {task_id}: {result['error']}")
+                    
+            except Exception as e:
+                task_id = future_to_task[future][0]
+                logging.error(f"❌ Unexpected error processing {task_id}: {e}")
+                
+                # Create a minimal failed result
+                failed_result = {
+                    'task_id': task_id,
+                    'prompt': '',
+                    'augmentation_type': augmentation_type,
+                    'raw_output': "",
+                    'generated_code': "",
+                    'is_syntactically_valid': False,
+                    'passed': False,
+                    'error': str(e),
+                    'augmented_context': "",
+                    'metrics': GenerationMetrics(
+                        model_name=config.model_name,
+                        success=False,
+                        error_message=str(e),
+                        timestamp=datetime.now().isoformat()
+                    )._asdict(),
+                    'processing_success': False
+                }
+                results.append(failed_result)
+                experiment_metrics['failed_generations'] += 1
     
     # Finalize experiment metrics
     experiment_end_time = time.time()
     experiment_metrics['end_time'] = datetime.now().isoformat()
     experiment_metrics['duration_seconds'] = experiment_end_time - experiment_start_time
     
-    # Get provider summary metrics
-    provider_metrics = provider.get_summary_metrics()
+    # Create a mock provider metrics object for consistency
+    provider_metrics = {
+        'total_requests': experiment_metrics['successful_generations'] + experiment_metrics['failed_generations'],
+        'successful_requests': experiment_metrics['successful_generations'],
+        'failed_requests': experiment_metrics['failed_generations'],
+        'total_input_tokens': sum(m['input_tokens'] for m in experiment_metrics['individual_metrics']),
+        'total_output_tokens': sum(m['output_tokens'] for m in experiment_metrics['individual_metrics']),
+        'total_cost': experiment_metrics['total_cost'],
+        'total_latency': sum(m['latency_seconds'] for m in experiment_metrics['individual_metrics']),
+        'average_latency': sum(m['latency_seconds'] for m in experiment_metrics['individual_metrics']) / len(experiment_metrics['individual_metrics']) if experiment_metrics['individual_metrics'] else 0,
+        'success_rate': experiment_metrics['successful_generations'] / (experiment_metrics['successful_generations'] + experiment_metrics['failed_generations']) if (experiment_metrics['successful_generations'] + experiment_metrics['failed_generations']) > 0 else 0,
+        'average_input_tokens': sum(m['input_tokens'] for m in experiment_metrics['individual_metrics']) / len(experiment_metrics['individual_metrics']) if experiment_metrics['individual_metrics'] else 0,
+        'average_output_tokens': sum(m['output_tokens'] for m in experiment_metrics['individual_metrics']) / len(experiment_metrics['individual_metrics']) if experiment_metrics['individual_metrics'] else 0,
+        'average_cost_per_request': experiment_metrics['total_cost'] / (experiment_metrics['successful_generations'] + experiment_metrics['failed_generations']) if (experiment_metrics['successful_generations'] + experiment_metrics['failed_generations']) > 0 else 0,
+        'requests': experiment_metrics['individual_metrics']
+    }
     
     # Log comprehensive experiment summary
     log_experiment_summary(augmentation_type, experiment_metrics, provider_metrics, config)
@@ -1080,20 +1285,36 @@ def save_detailed_metrics(output_dir: Path, config: ExperimentConfig, all_result
 
 def load_mbpp_problems() -> Dict:
     """Load MBPP problems - implement based on your MBPP data format"""
-    try:
-        mbpp_df = pd.read_csv("mbpp.csv")
-        problems = {}
-        for idx, row in mbpp_df.iterrows():
-            task_id = f"MBPP/{idx}"
-            problems[task_id] = {
-                'prompt': row['text'],
-                'test': row.get('test_list', ''),
-                'solution': row.get('code', '')
-            }
-        return problems
-    except FileNotFoundError:
-        logging.error("MBPP dataset not found. Please ensure mbpp.csv is available.")
-        return {}
+    # Try multiple possible paths for the MBPP CSV file
+    possible_paths = [
+        "src/data/mbpp.csv",  # From project root
+        "data/mbpp.csv",  # From src/ directory
+        "mbpp.csv",  # Current directory
+        os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "src", "data", "mbpp.csv")  # Absolute path
+    ]
+    
+    for csv_path in possible_paths:
+        try:
+            if os.path.exists(csv_path):
+                logging.info(f"✅ Loading MBPP problems from {csv_path}")
+                mbpp_df = pd.read_csv(csv_path)
+                problems = {}
+                for idx, row in mbpp_df.iterrows():
+                    task_id = f"MBPP/{row['task_id']}"  # Use the actual task_id from CSV
+                    problems[task_id] = {
+                        'prompt': row['text'],
+                        'test': row.get('test_list', ''),
+                        'solution': row.get('code', '')
+                    }
+                logging.info(f"✅ Loaded {len(problems)} MBPP problems")
+                return problems
+        except Exception as e:
+            logging.debug(f"Failed to load MBPP from {csv_path}: {e}")
+            continue
+    
+    # If no file found
+    logging.error("MBPP dataset not found. Please ensure mbpp.csv is available in src/data/ directory.")
+    return {}
 
 
 def rerank_single_task(task_data: Tuple[str, str, List[Dict]]) -> Optional[Dict]:
@@ -1164,7 +1385,7 @@ def perform_reranking(all_results: Dict[str, List[Dict]], config: ExperimentConf
     reranked_results = []
     
     # Process tasks in parallel with progress bar
-    with ProcessPoolExecutor(max_workers=1) as executor:
+    with ProcessPoolExecutor(max_workers=28) as executor:
         # Submit all tasks
         future_to_task = {executor.submit(rerank_single_task, task): task for task in tasks}
         

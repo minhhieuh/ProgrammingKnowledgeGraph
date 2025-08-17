@@ -33,6 +33,10 @@ def download_mbpp():
     df.to_csv("mbpp.csv", index=False)
     print(f"Saved MBPP dataset to mbpp.csv")
     
+    # save to jsonl
+    df.to_json("mbpp.jsonl", orient="records", lines=True)
+    print(f"Saved MBPP dataset to mbpp.jsonl")
+    
     return df
 
 if __name__ == "__main__":
