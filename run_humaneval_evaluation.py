@@ -226,7 +226,8 @@ def run_humaneval_evaluation(jsonl_file_path):
                         return float(percent_match.group(1))
             
             # If we can't parse the output, try to find results file
-            results_file = jsonl_filename.replace('.jsonl', '_results.jsonl')
+            # results_file = jsonl_filename.replace('.jsonl', '_results.jsonl')
+            results_file = jsonl_filename
             if os.path.exists(results_file):
                 with open(results_file, 'r') as f:
                     results = [json.loads(line) for line in f]

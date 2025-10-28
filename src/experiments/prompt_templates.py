@@ -7,7 +7,16 @@ Modify these templates to change prompts globally across all experiments.
 """
 
 # System Prompt Template
-SYSTEM_PROMPT_TEMPLATE = "You are an expert Python programmer. Your task is to solve programming problems by writing clean, executable Python code."
+SYSTEM_PROMPT_TEMPLATE = """You are an expert Python programmer. Your task is to solve programming problems by writing clean, executable Python code.
+
+Requirements:
+- Write executable Python code
+- Include all necessary imports
+- Ensure the solution is self-contained
+- Write your solution between [PYTHON] and [/PYTHON] tags
+- No explanation, no extra text, no comments outside of the codes
+
+"""
 
 # User Prompt Templates
 USER_PROMPT_TEMPLATE_WITH_CONTEXT = """Solve the following problem:
@@ -18,26 +27,11 @@ The following code might be helpful as reference:
 {context}
 
 If the helper code is useful, integrate its logic directly into your solution. Otherwise, ignore it.
-
-Requirements:
-- Write executable Python code
-- Include all necessary imports
-- Ensure the solution is self-contained
-- Write your solution between [PYTHON] and [/PYTHON] tags
-- No explanation, no extra text, no comments outside of the codes
 """
 
 USER_PROMPT_TEMPLATE_NO_CONTEXT = """Solve the following problem:
 
 {problem}
-
-Requirements:
-- Write executable Python code
-- Include all necessary imports
-- Ensure the solution is self-contained
-- Write your solution between [PYTHON] and [/PYTHON] tags
-- No explanation, no extra text, no comments outside of the codes
-
 """
 
 # Legacy Full Prompt Templates (for backward compatibility)
@@ -49,26 +43,11 @@ The following code might be helpful as reference:
 {context}
 
 If the helper code is useful, integrate its logic directly into your solution. Otherwise, ignore it.
-
-Requirements:
-- Write executable Python code
-- Include all necessary imports
-- Ensure the solution is self-contained
-- Write your solution between [PYTHON] and [/PYTHON] tags
-- No explanation, no extra text, no comments outside of the codes
-
 """
 
 FULL_PROMPT_TEMPLATE_NO_CONTEXT = """You are an expert Python programmer. Solve the following problem:
 
 {problem}
-
-Requirements:
-- Write executable Python code
-- Include all necessary imports
-- Ensure the solution is self-contained
-- Write your solution between [PYTHON] and [/PYTHON] tags
-- No explanation, no extra text, no comments outside of the codes
 """
 
 # Alternative Templates (for experimentation)
@@ -77,14 +56,6 @@ ALTERNATIVE_SYSTEM_PROMPT = "You are a skilled software engineer specializing in
 ALTERNATIVE_USER_PROMPT_NO_CONTEXT = """Please implement a solution for the following programming challenge:
 
 {problem}
-
-Guidelines:
-- Write clean, efficient Python code
-- Include proper type hints where applicable
-- Add brief comments for complex logic
-- Ensure your solution handles edge cases
-- Wrap your final solution in [PYTHON] and [/PYTHON] tags
-- No explanation, no extra text, no comments outside of the codes
 """
 
 # Template Configuration

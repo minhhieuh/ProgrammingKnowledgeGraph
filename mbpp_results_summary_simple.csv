@@ -1,0 +1,5 @@
+Method,bm25_pass,bm25_syntax,no_rag_pass,no_rag_syntax,reranked_pass,reranked_syntax,voyage_block_pass,voyage_block_syntax,voyage_emb_pass,voyage_emb_syntax,voyage_func_pass,voyage_func_syntax,ideal_ranker_pass,ideal_ranker_syntax
+gpt-4o,80.60%,100.00%,81.40%,99.80%,83.40%,99.80%,81.40%,100.00%,83.00%,100.00%,81.60%,100.00%,86.00%,100.00%
+claude-3-haiku-20240307,67.60%,100.00%,67.20%,100.00%,67.60%,100.00%,67.00%,100.00%,66.00%,100.00%,67.60%,100.00%,73.00%,100.00%
+claude-sonnet-4-20250514,82.40%,97.80%,83.60%,98.80%,82.20%,100.00%,83.00%,98.80%,82.20%,98.20%,83.20%,98.40%,87.40%,100.00%
+gpt-4o-mini,74.00%,99.80%,74.20%,100.00%,77.20%,100.00%,73.80%,100.00%,73.40%,100.00%,74.60%,100.00%,79.20%,100.00%

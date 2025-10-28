@@ -8,6 +8,9 @@ import traceback
 import sys
 import io
 import contextlib
+import signal
+import multiprocessing
+from functools import wraps
 
 # Setup logging
 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -32,7 +35,39 @@ detailed_handler.setFormatter(logging.Formatter('%(asctime)s - %(message)s'))
 detailed_logger.addHandler(detailed_handler)
 detailed_logger.setLevel(logging.INFO)
 
-def evaluate_individual_assertions(generated_code, test_assertions, task_id, detailed_logger):
+def timeout_handler(func, timeout_duration):
+    """
+    Wrapper to add timeout control to a function execution
+    """
+    def wrapper(*args, **kwargs):
+        def target(queue, *args, **kwargs):
+            try:
+                result = func(*args, **kwargs)
+                queue.put(('success', result))
+            except Exception as e:
+                queue.put(('error', e))
+        
+        queue = multiprocessing.Queue()
+        process = multiprocessing.Process(target=target, args=(queue,) + args, kwargs=kwargs)
+        process.start()
+        process.join(timeout=timeout_duration)
+        
+        if process.is_alive():
+            process.terminate()
+            process.join()
+            raise TimeoutError(f"Function execution timed out after {timeout_duration} seconds")
+        
+        if queue.empty():
+            raise TimeoutError(f"Function execution timed out after {timeout_duration} seconds")
+        
+        result_type, result = queue.get()
+        if result_type == 'error':
+            raise result
+        return result
+    
+    return wrapper
+
+def evaluate_individual_assertions(generated_code, test_assertions, task_id, detailed_logger, timeout=20.0):
     """
     Evaluate each test assertion individually and log the results
     """
@@ -46,35 +81,58 @@ def evaluate_individual_assertions(generated_code, test_assertions, task_id, det
         test_code = generated_code + "\n" + assertion
         
         try:
-            # Capture stdout/stderr
-            old_stdout = sys.stdout
-            old_stderr = sys.stderr
-            stdout_capture = io.StringIO()
-            stderr_capture = io.StringIO()
+            # Define the execution function
+            def execute_test_code():
+                # Capture stdout/stderr
+                old_stdout = sys.stdout
+                old_stderr = sys.stderr
+                stdout_capture = io.StringIO()
+                stderr_capture = io.StringIO()
+                
+                try:
+                    sys.stdout = stdout_capture
+                    sys.stderr = stderr_capture
+                    
+                    # Execute the test
+                    exec_globals = {}
+                    exec(test_code, exec_globals)
+                    
+                    # If we get here, the assertion passed
+                    return {
+                        'stdout': stdout_capture.getvalue(),
+                        'stderr': stderr_capture.getvalue(),
+                        'status': 'PASSED'
+                    }
+                finally:
+                    # Restore stdout/stderr
+                    sys.stdout = old_stdout
+                    sys.stderr = old_stderr
             
-            sys.stdout = stdout_capture
-            sys.stderr = stderr_capture
-            
-            # Execute the test
-            exec_globals = {}
-            exec(test_code, exec_globals)
-            
-            # If we get here, the assertion passed
-            stdout_output = stdout_capture.getvalue()
-            stderr_output = stderr_capture.getvalue()
+            # Execute with timeout
+            result = timeout_handler(execute_test_code, timeout)()
             
             detailed_logger.info(f"    ✓ PASSED")
-            if stdout_output.strip():
-                detailed_logger.info(f"    STDOUT: {stdout_output.strip()}")
-            if stderr_output.strip():
-                detailed_logger.info(f"    STDERR: {stderr_output.strip()}")
+            if result['stdout'].strip():
+                detailed_logger.info(f"    STDOUT: {result['stdout'].strip()}")
+            if result['stderr'].strip():
+                detailed_logger.info(f"    STDERR: {result['stderr'].strip()}")
                 
             results.append({
                 'assertion': assertion,
                 'status': 'PASSED',
                 'error': None,
-                'stdout': stdout_output,
-                'stderr': stderr_output
+                'stdout': result['stdout'],
+                'stderr': result['stderr']
+            })
+            
+        except TimeoutError as e:
+            detailed_logger.info(f"    ✗ TIMEOUT: {str(e)}")
+            results.append({
+                'assertion': assertion,
+                'status': 'TIMEOUT',
+                'error': str(e),
+                'stdout': '',
+                'stderr': ''
             })
             
         except AssertionError as e:
@@ -83,8 +141,8 @@ def evaluate_individual_assertions(generated_code, test_assertions, task_id, det
                 'assertion': assertion,
                 'status': 'FAILED',
                 'error': f"AssertionError: {str(e)}",
-                'stdout': stdout_capture.getvalue(),
-                'stderr': stderr_capture.getvalue()
+                'stdout': '',
+                'stderr': ''
             })
             
         except Exception as e:
@@ -93,14 +151,9 @@ def evaluate_individual_assertions(generated_code, test_assertions, task_id, det
                 'assertion': assertion,
                 'status': 'ERROR',
                 'error': f"{type(e).__name__}: {str(e)}",
-                'stdout': stdout_capture.getvalue(),
-                'stderr': stderr_capture.getvalue()
+                'stdout': '',
+                'stderr': ''
             })
-            
-        finally:
-            # Restore stdout/stderr
-            sys.stdout = old_stdout
-            sys.stderr = old_stderr
     
     # Summary for this task
     passed = sum(1 for r in results if r['status'] == 'PASSED')
@@ -109,7 +162,8 @@ def evaluate_individual_assertions(generated_code, test_assertions, task_id, det
     
     return results
 
-exp_folder = "experiment_results/gpt-4o-mini_mbpp_1754249928"
+exp_folder = "experiment_results/claude-3-haiku-20240307_mbpp_1757955177"
+
 run_name = os.path.basename(exp_folder)
 
 model_name = run_name.split("_")[0]
@@ -196,7 +250,8 @@ for jsonl_file in jsonl_files:
                     data["generated_code"], 
                     mbpp_problems[task_id]["test"], 
                     task_id, 
-                    detailed_logger
+                    detailed_logger,
+                    timeout=20.0
                 )
                 individual_results.append({
                     'task_id': task_id,
@@ -244,7 +299,7 @@ for jsonl_file in jsonl_files:
         is_mbpp=True,  # Critical!
         k=[1],
         timeout=20.0,
-        n_workers=28
+        n_workers=30
     )
     
     # Store results

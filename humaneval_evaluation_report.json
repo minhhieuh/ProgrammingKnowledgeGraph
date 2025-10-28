@@ -1,0 +1,971 @@
+{
+  "evaluation_timestamp": "2025-09-16T03:24:24.295826",
+  "total_experiments": 13,
+  "total_evaluations": 46,
+  "results": [
+    {
+      "experiment_folder": "claude-3-haiku-20240307_humaneval_1754246217",
+      "method": "bm25",
+      "file": "bm25_results.jsonl",
+      "pass_at_1_percentage": 71.95121951219512
+    },
+    {
+      "experiment_folder": "claude-3-haiku-20240307_humaneval_1754246217",
+      "method": "voyage_block",
+      "file": "voyage_block_results.jsonl",
+      "pass_at_1_percentage": 67.6829268292683
+    },
+    {
+      "experiment_folder": "claude-3-haiku-20240307_humaneval_1754246217",
+      "method": "no_rag",
+      "file": "no_rag_results.jsonl",
+      "pass_at_1_percentage": 74.39024390243902
+    },
+    {
+      "experiment_folder": "claude-3-haiku-20240307_humaneval_1754246217",
+      "method": "voyage_func",
+      "file": "voyage_func_results.jsonl",
+      "pass_at_1_percentage": 71.34146341463415
+    },
+    {
+      "experiment_folder": "claude-3-haiku-20240307_humaneval_1754246217",
+      "method": "reranked",
+      "file": "reranked_results.jsonl",
+      "pass_at_1_percentage": 73.78048780487805
+    },
+    {
+      "experiment_folder": "gpt-4o-mini_humaneval_1757955653",
+      "method": "voyage_emb",
+      "file": "voyage_emb_results.jsonl",
+      "pass_at_1_percentage": 85.36585365853658
+    },
+    {
+      "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754242316",
+      "method": "bm25",
+      "file": "bm25_results.jsonl",
+      "pass_at_1_percentage": 0.0
+    },
+    {
+      "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754242316",
+      "method": "voyage_block",
+      "file": "voyage_block_results.jsonl",
+      "pass_at_1_percentage": 0.0
+    },
+    {
+      "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754242316",
+      "method": "no_rag",
+      "file": "no_rag_results.jsonl",
+      "pass_at_1_percentage": 0.0
+    },
+    {
+      "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754242316",
+      "method": "voyage_func",
+      "file": "voyage_func_results.jsonl",
+      "pass_at_1_percentage": 0.0
+    },
+    {
+      "experiment_folder": "gpt-4o_humaneval_1754247437",
+      "method": "bm25",
+      "file": "bm25_results.jsonl",
+      "pass_at_1_percentage": 89.02439024390245
+    },
+    {
+      "experiment_folder": "gpt-4o_humaneval_1754247437",
+      "method": "voyage_block",
+      "file": "voyage_block_results.jsonl",
+      "pass_at_1_percentage": 89.63414634146342
+    },
+    {
+      "experiment_folder": "gpt-4o_humaneval_1754247437",
+      "method": "no_rag",
+      "file": "no_rag_results.jsonl",
+      "pass_at_1_percentage": 88.41463414634147
+    },
+    {
+      "experiment_folder": "gpt-4o_humaneval_1754247437",
+      "method": "voyage_func",
+      "file": "voyage_func_results.jsonl",
+      "pass_at_1_percentage": 89.02439024390245
+    },
+    {
+      "experiment_folder": "gpt-4o_humaneval_1754247437",
+      "method": "reranked",
+      "file": "reranked_results.jsonl",
+      "pass_at_1_percentage": 89.63414634146342
+    },
+    {
+      "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754242505",
+      "method": "bm25",
+      "file": "bm25_results.jsonl",
+      "pass_at_1_percentage": 0.0
+    },
+    {
+      "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754242505",
+      "method": "voyage_block",
+      "file": "voyage_block_results.jsonl",
+      "pass_at_1_percentage": 0.0
+    },
+    {
+      "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754242505",
+      "method": "no_rag",
+      "file": "no_rag_results.jsonl",
+      "pass_at_1_percentage": 0.0
+    },
+    {
+      "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754242505",
+      "method": "voyage_func",
+      "file": "voyage_func_results.jsonl",
+      "pass_at_1_percentage": 0.0
+    },
+    {
+      "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754242505",
+      "method": "reranked",
+      "file": "reranked_results.jsonl",
+      "pass_at_1_percentage": 0.0
+    },
+    {
+      "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754244326",
+      "method": "bm25",
+      "file": "bm25_results.jsonl",
+      "pass_at_1_percentage": 95.1219512195122
+    },
+    {
+      "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754244326",
+      "method": "voyage_block",
+      "file": "voyage_block_results.jsonl",
+      "pass_at_1_percentage": 94.51219512195121
+    },
+    {
+      "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754244326",
+      "method": "no_rag",
+      "file": "no_rag_results.jsonl",
+      "pass_at_1_percentage": 96.34146341463415
+    },
+    {
+      "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754244326",
+      "method": "voyage_func",
+      "file": "voyage_func_results.jsonl",
+      "pass_at_1_percentage": 95.1219512195122
+    },
+    {
+      "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754244326",
+      "method": "reranked",
+      "file": "reranked_results.jsonl",
+      "pass_at_1_percentage": 95.73170731707317
+    },
+    {
+      "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754242067",
+      "method": "bm25",
+      "file": "bm25_results.jsonl",
+      "pass_at_1_percentage": 0.0
+    },
+    {
+      "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754242067",
+      "method": "voyage_block",
+      "file": "voyage_block_results.jsonl",
+      "pass_at_1_percentage": 0.0
+    },
+    {
+      "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754242067",
+      "method": "no_rag",
+      "file": "no_rag_results.jsonl",
+      "pass_at_1_percentage": 0.0
+    },
+    {
+      "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754242067",
+      "method": "voyage_func",
+      "file": "voyage_func_results.jsonl",
+      "pass_at_1_percentage": 0.0
+    },
+    {
+      "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754242067",
+      "method": "reranked",
+      "file": "reranked_results.jsonl",
+      "pass_at_1_percentage": 0.0
+    },
+    {
+      "experiment_folder": "gpt-4o_humaneval_1757955726",
+      "method": "voyage_emb",
+      "file": "voyage_emb_results.jsonl",
+      "pass_at_1_percentage": 89.63414634146342
+    },
+    {
+      "experiment_folder": "claude-sonnet-4-20250514_humaneval_1757955880",
+      "method": "voyage_emb",
+      "file": "voyage_emb_results.jsonl",
+      "pass_at_1_percentage": 95.1219512195122
+    },
+    {
+      "experiment_folder": "gpt-4o-mini_humaneval_1754247720",
+      "method": "bm25",
+      "file": "bm25_results.jsonl",
+      "pass_at_1_percentage": 82.92682926829268
+    },
+    {
+      "experiment_folder": "gpt-4o-mini_humaneval_1754247720",
+      "method": "voyage_block",
+      "file": "voyage_block_results.jsonl",
+      "pass_at_1_percentage": 83.53658536585365
+    },
+    {
+      "experiment_folder": "gpt-4o-mini_humaneval_1754247720",
+      "method": "no_rag",
+      "file": "no_rag_results.jsonl",
+      "pass_at_1_percentage": 87.1951219512195
+    },
+    {
+      "experiment_folder": "gpt-4o-mini_humaneval_1754247720",
+      "method": "voyage_func",
+      "file": "voyage_func_results.jsonl",
+      "pass_at_1_percentage": 85.97560975609755
+    },
+    {
+      "experiment_folder": "gpt-4o-mini_humaneval_1754247720",
+      "method": "reranked",
+      "file": "reranked_results.jsonl",
+      "pass_at_1_percentage": 87.8048780487805
+    },
+    {
+      "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754242598",
+      "method": "bm25",
+      "file": "bm25_results.jsonl",
+      "pass_at_1_percentage": 0.0
+    },
+    {
+      "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754242598",
+      "method": "voyage_block",
+      "file": "voyage_block_results.jsonl",
+      "pass_at_1_percentage": 0.0
+    },
+    {
+      "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754242598",
+      "method": "no_rag",
+      "file": "no_rag_results.jsonl",
+      "pass_at_1_percentage": 0.0
+    },
+    {
+      "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754242598",
+      "method": "voyage_func",
+      "file": "voyage_func_results.jsonl",
+      "pass_at_1_percentage": 0.0
+    },
+    {
+      "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754242541",
+      "method": "bm25",
+      "file": "bm25_results.jsonl",
+      "pass_at_1_percentage": 0.0
+    },
+    {
+      "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754242541",
+      "method": "voyage_block",
+      "file": "voyage_block_results.jsonl",
+      "pass_at_1_percentage": 0.0
+    },
+    {
+      "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754242541",
+      "method": "no_rag",
+      "file": "no_rag_results.jsonl",
+      "pass_at_1_percentage": 0.0
+    },
+    {
+      "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754242541",
+      "method": "voyage_func",
+      "file": "voyage_func_results.jsonl",
+      "pass_at_1_percentage": 0.0
+    },
+    {
+      "experiment_folder": "claude-3-haiku-20240307_humaneval_1757955925",
+      "method": "voyage_emb",
+      "file": "voyage_emb_results.jsonl",
+      "pass_at_1_percentage": 73.78048780487805
+    }
+  ],
+  "summary_by_experiment": {
+    "claude-3-haiku-20240307_humaneval_1754246217": [
+      {
+        "method": "bm25",
+        "pass_at_1_percentage": 71.95121951219512
+      },
+      {
+        "method": "voyage_block",
+        "pass_at_1_percentage": 67.6829268292683
+      },
+      {
+        "method": "no_rag",
+        "pass_at_1_percentage": 74.39024390243902
+      },
+      {
+        "method": "voyage_func",
+        "pass_at_1_percentage": 71.34146341463415
+      },
+      {
+        "method": "reranked",
+        "pass_at_1_percentage": 73.78048780487805
+      }
+    ],
+    "gpt-4o-mini_humaneval_1757955653": [
+      {
+        "method": "voyage_emb",
+        "pass_at_1_percentage": 85.36585365853658
+      }
+    ],
+    "claude-sonnet-4-20250514_humaneval_1754242316": [
+      {
+        "method": "bm25",
+        "pass_at_1_percentage": 0.0
+      },
+      {
+        "method": "voyage_block",
+        "pass_at_1_percentage": 0.0
+      },
+      {
+        "method": "no_rag",
+        "pass_at_1_percentage": 0.0
+      },
+      {
+        "method": "voyage_func",
+        "pass_at_1_percentage": 0.0
+      }
+    ],
+    "gpt-4o_humaneval_1754247437": [
+      {
+        "method": "bm25",
+        "pass_at_1_percentage": 89.02439024390245
+      },
+      {
+        "method": "voyage_block",
+        "pass_at_1_percentage": 89.63414634146342
+      },
+      {
+        "method": "no_rag",
+        "pass_at_1_percentage": 88.41463414634147
+      },
+      {
+        "method": "voyage_func",
+        "pass_at_1_percentage": 89.02439024390245
+      },
+      {
+        "method": "reranked",
+        "pass_at_1_percentage": 89.63414634146342
+      }
+    ],
+    "claude-sonnet-4-20250514_humaneval_1754242505": [
+      {
+        "method": "bm25",
+        "pass_at_1_percentage": 0.0
+      },
+      {
+        "method": "voyage_block",
+        "pass_at_1_percentage": 0.0
+      },
+      {
+        "method": "no_rag",
+        "pass_at_1_percentage": 0.0
+      },
+      {
+        "method": "voyage_func",
+        "pass_at_1_percentage": 0.0
+      },
+      {
+        "method": "reranked",
+        "pass_at_1_percentage": 0.0
+      }
+    ],
+    "claude-sonnet-4-20250514_humaneval_1754244326": [
+      {
+        "method": "bm25",
+        "pass_at_1_percentage": 95.1219512195122
+      },
+      {
+        "method": "voyage_block",
+        "pass_at_1_percentage": 94.51219512195121
+      },
+      {
+        "method": "no_rag",
+        "pass_at_1_percentage": 96.34146341463415
+      },
+      {
+        "method": "voyage_func",
+        "pass_at_1_percentage": 95.1219512195122
+      },
+      {
+        "method": "reranked",
+        "pass_at_1_percentage": 95.73170731707317
+      }
+    ],
+    "claude-sonnet-4-20250514_humaneval_1754242067": [
+      {
+        "method": "bm25",
+        "pass_at_1_percentage": 0.0
+      },
+      {
+        "method": "voyage_block",
+        "pass_at_1_percentage": 0.0
+      },
+      {
+        "method": "no_rag",
+        "pass_at_1_percentage": 0.0
+      },
+      {
+        "method": "voyage_func",
+        "pass_at_1_percentage": 0.0
+      },
+      {
+        "method": "reranked",
+        "pass_at_1_percentage": 0.0
+      }
+    ],
+    "gpt-4o_humaneval_1757955726": [
+      {
+        "method": "voyage_emb",
+        "pass_at_1_percentage": 89.63414634146342
+      }
+    ],
+    "claude-sonnet-4-20250514_humaneval_1757955880": [
+      {
+        "method": "voyage_emb",
+        "pass_at_1_percentage": 95.1219512195122
+      }
+    ],
+    "gpt-4o-mini_humaneval_1754247720": [
+      {
+        "method": "bm25",
+        "pass_at_1_percentage": 82.92682926829268
+      },
+      {
+        "method": "voyage_block",
+        "pass_at_1_percentage": 83.53658536585365
+      },
+      {
+        "method": "no_rag",
+        "pass_at_1_percentage": 87.1951219512195
+      },
+      {
+        "method": "voyage_func",
+        "pass_at_1_percentage": 85.97560975609755
+      },
+      {
+        "method": "reranked",
+        "pass_at_1_percentage": 87.8048780487805
+      }
+    ],
+    "claude-sonnet-4-20250514_humaneval_1754242598": [
+      {
+        "method": "bm25",
+        "pass_at_1_percentage": 0.0
+      },
+      {
+        "method": "voyage_block",
+        "pass_at_1_percentage": 0.0
+      },
+      {
+        "method": "no_rag",
+        "pass_at_1_percentage": 0.0
+      },
+      {
+        "method": "voyage_func",
+        "pass_at_1_percentage": 0.0
+      }
+    ],
+    "claude-sonnet-4-20250514_humaneval_1754242541": [
+      {
+        "method": "bm25",
+        "pass_at_1_percentage": 0.0
+      },
+      {
+        "method": "voyage_block",
+        "pass_at_1_percentage": 0.0
+      },
+      {
+        "method": "no_rag",
+        "pass_at_1_percentage": 0.0
+      },
+      {
+        "method": "voyage_func",
+        "pass_at_1_percentage": 0.0
+      }
+    ],
+    "claude-3-haiku-20240307_humaneval_1757955925": [
+      {
+        "method": "voyage_emb",
+        "pass_at_1_percentage": 73.78048780487805
+      }
+    ]
+  },
+  "summary_by_method": {
+    "bm25": [
+      {
+        "experiment_folder": "claude-3-haiku-20240307_humaneval_1754246217",
+        "pass_at_1_percentage": 71.95121951219512
+      },
+      {
+        "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754242316",
+        "pass_at_1_percentage": 0.0
+      },
+      {
+        "experiment_folder": "gpt-4o_humaneval_1754247437",
+        "pass_at_1_percentage": 89.02439024390245
+      },
+      {
+        "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754242505",
+        "pass_at_1_percentage": 0.0
+      },
+      {
+        "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754244326",
+        "pass_at_1_percentage": 95.1219512195122
+      },
+      {
+        "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754242067",
+        "pass_at_1_percentage": 0.0
+      },
+      {
+        "experiment_folder": "gpt-4o-mini_humaneval_1754247720",
+        "pass_at_1_percentage": 82.92682926829268
+      },
+      {
+        "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754242598",
+        "pass_at_1_percentage": 0.0
+      },
+      {
+        "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754242541",
+        "pass_at_1_percentage": 0.0
+      }
+    ],
+    "voyage_block": [
+      {
+        "experiment_folder": "claude-3-haiku-20240307_humaneval_1754246217",
+        "pass_at_1_percentage": 67.6829268292683
+      },
+      {
+        "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754242316",
+        "pass_at_1_percentage": 0.0
+      },
+      {
+        "experiment_folder": "gpt-4o_humaneval_1754247437",
+        "pass_at_1_percentage": 89.63414634146342
+      },
+      {
+        "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754242505",
+        "pass_at_1_percentage": 0.0
+      },
+      {
+        "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754244326",
+        "pass_at_1_percentage": 94.51219512195121
+      },
+      {
+        "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754242067",
+        "pass_at_1_percentage": 0.0
+      },
+      {
+        "experiment_folder": "gpt-4o-mini_humaneval_1754247720",
+        "pass_at_1_percentage": 83.53658536585365
+      },
+      {
+        "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754242598",
+        "pass_at_1_percentage": 0.0
+      },
+      {
+        "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754242541",
+        "pass_at_1_percentage": 0.0
+      }
+    ],
+    "no_rag": [
+      {
+        "experiment_folder": "claude-3-haiku-20240307_humaneval_1754246217",
+        "pass_at_1_percentage": 74.39024390243902
+      },
+      {
+        "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754242316",
+        "pass_at_1_percentage": 0.0
+      },
+      {
+        "experiment_folder": "gpt-4o_humaneval_1754247437",
+        "pass_at_1_percentage": 88.41463414634147
+      },
+      {
+        "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754242505",
+        "pass_at_1_percentage": 0.0
+      },
+      {
+        "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754244326",
+        "pass_at_1_percentage": 96.34146341463415
+      },
+      {
+        "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754242067",
+        "pass_at_1_percentage": 0.0
+      },
+      {
+        "experiment_folder": "gpt-4o-mini_humaneval_1754247720",
+        "pass_at_1_percentage": 87.1951219512195
+      },
+      {
+        "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754242598",
+        "pass_at_1_percentage": 0.0
+      },
+      {
+        "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754242541",
+        "pass_at_1_percentage": 0.0
+      }
+    ],
+    "voyage_func": [
+      {
+        "experiment_folder": "claude-3-haiku-20240307_humaneval_1754246217",
+        "pass_at_1_percentage": 71.34146341463415
+      },
+      {
+        "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754242316",
+        "pass_at_1_percentage": 0.0
+      },
+      {
+        "experiment_folder": "gpt-4o_humaneval_1754247437",
+        "pass_at_1_percentage": 89.02439024390245
+      },
+      {
+        "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754242505",
+        "pass_at_1_percentage": 0.0
+      },
+      {
+        "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754244326",
+        "pass_at_1_percentage": 95.1219512195122
+      },
+      {
+        "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754242067",
+        "pass_at_1_percentage": 0.0
+      },
+      {
+        "experiment_folder": "gpt-4o-mini_humaneval_1754247720",
+        "pass_at_1_percentage": 85.97560975609755
+      },
+      {
+        "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754242598",
+        "pass_at_1_percentage": 0.0
+      },
+      {
+        "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754242541",
+        "pass_at_1_percentage": 0.0
+      }
+    ],
+    "reranked": [
+      {
+        "experiment_folder": "claude-3-haiku-20240307_humaneval_1754246217",
+        "pass_at_1_percentage": 73.78048780487805
+      },
+      {
+        "experiment_folder": "gpt-4o_humaneval_1754247437",
+        "pass_at_1_percentage": 89.63414634146342
+      },
+      {
+        "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754242505",
+        "pass_at_1_percentage": 0.0
+      },
+      {
+        "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754244326",
+        "pass_at_1_percentage": 95.73170731707317
+      },
+      {
+        "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754242067",
+        "pass_at_1_percentage": 0.0
+      },
+      {
+        "experiment_folder": "gpt-4o-mini_humaneval_1754247720",
+        "pass_at_1_percentage": 87.8048780487805
+      }
+    ],
+    "voyage_emb": [
+      {
+        "experiment_folder": "gpt-4o-mini_humaneval_1757955653",
+        "pass_at_1_percentage": 85.36585365853658
+      },
+      {
+        "experiment_folder": "gpt-4o_humaneval_1757955726",
+        "pass_at_1_percentage": 89.63414634146342
+      },
+      {
+        "experiment_folder": "claude-sonnet-4-20250514_humaneval_1757955880",
+        "pass_at_1_percentage": 95.1219512195122
+      },
+      {
+        "experiment_folder": "claude-3-haiku-20240307_humaneval_1757955925",
+        "pass_at_1_percentage": 73.78048780487805
+      }
+    ]
+  },
+  "best_performers": {
+    "by_experiment": {
+      "claude-3-haiku-20240307_humaneval_1754246217": {
+        "method": "no_rag",
+        "pass_at_1_percentage": 74.39024390243902
+      },
+      "gpt-4o-mini_humaneval_1757955653": {
+        "method": "voyage_emb",
+        "pass_at_1_percentage": 85.36585365853658
+      },
+      "claude-sonnet-4-20250514_humaneval_1754242316": {
+        "method": "bm25",
+        "pass_at_1_percentage": 0.0
+      },
+      "gpt-4o_humaneval_1754247437": {
+        "method": "voyage_block",
+        "pass_at_1_percentage": 89.63414634146342
+      },
+      "claude-sonnet-4-20250514_humaneval_1754242505": {
+        "method": "bm25",
+        "pass_at_1_percentage": 0.0
+      },
+      "claude-sonnet-4-20250514_humaneval_1754244326": {
+        "method": "no_rag",
+        "pass_at_1_percentage": 96.34146341463415
+      },
+      "claude-sonnet-4-20250514_humaneval_1754242067": {
+        "method": "bm25",
+        "pass_at_1_percentage": 0.0
+      },
+      "gpt-4o_humaneval_1757955726": {
+        "method": "voyage_emb",
+        "pass_at_1_percentage": 89.63414634146342
+      },
+      "claude-sonnet-4-20250514_humaneval_1757955880": {
+        "method": "voyage_emb",
+        "pass_at_1_percentage": 95.1219512195122
+      },
+      "gpt-4o-mini_humaneval_1754247720": {
+        "method": "reranked",
+        "pass_at_1_percentage": 87.8048780487805
+      },
+      "claude-sonnet-4-20250514_humaneval_1754242598": {
+        "method": "bm25",
+        "pass_at_1_percentage": 0.0
+      },
+      "claude-sonnet-4-20250514_humaneval_1754242541": {
+        "method": "bm25",
+        "pass_at_1_percentage": 0.0
+      },
+      "claude-3-haiku-20240307_humaneval_1757955925": {
+        "method": "voyage_emb",
+        "pass_at_1_percentage": 73.78048780487805
+      }
+    },
+    "by_method": {
+      "bm25": {
+        "average_pass_at_1": 37.66937669376694,
+        "experiment_count": 9,
+        "experiments": [
+          {
+            "experiment_folder": "claude-3-haiku-20240307_humaneval_1754246217",
+            "pass_at_1_percentage": 71.95121951219512
+          },
+          {
+            "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754242316",
+            "pass_at_1_percentage": 0.0
+          },
+          {
+            "experiment_folder": "gpt-4o_humaneval_1754247437",
+            "pass_at_1_percentage": 89.02439024390245
+          },
+          {
+            "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754242505",
+            "pass_at_1_percentage": 0.0
+          },
+          {
+            "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754244326",
+            "pass_at_1_percentage": 95.1219512195122
+          },
+          {
+            "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754242067",
+            "pass_at_1_percentage": 0.0
+          },
+          {
+            "experiment_folder": "gpt-4o-mini_humaneval_1754247720",
+            "pass_at_1_percentage": 82.92682926829268
+          },
+          {
+            "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754242598",
+            "pass_at_1_percentage": 0.0
+          },
+          {
+            "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754242541",
+            "pass_at_1_percentage": 0.0
+          }
+        ]
+      },
+      "voyage_block": {
+        "average_pass_at_1": 37.262872628726285,
+        "experiment_count": 9,
+        "experiments": [
+          {
+            "experiment_folder": "claude-3-haiku-20240307_humaneval_1754246217",
+            "pass_at_1_percentage": 67.6829268292683
+          },
+          {
+            "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754242316",
+            "pass_at_1_percentage": 0.0
+          },
+          {
+            "experiment_folder": "gpt-4o_humaneval_1754247437",
+            "pass_at_1_percentage": 89.63414634146342
+          },
+          {
+            "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754242505",
+            "pass_at_1_percentage": 0.0
+          },
+          {
+            "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754244326",
+            "pass_at_1_percentage": 94.51219512195121
+          },
+          {
+            "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754242067",
+            "pass_at_1_percentage": 0.0
+          },
+          {
+            "experiment_folder": "gpt-4o-mini_humaneval_1754247720",
+            "pass_at_1_percentage": 83.53658536585365
+          },
+          {
+            "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754242598",
+            "pass_at_1_percentage": 0.0
+          },
+          {
+            "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754242541",
+            "pass_at_1_percentage": 0.0
+          }
+        ]
+      },
+      "no_rag": {
+        "average_pass_at_1": 38.482384823848236,
+        "experiment_count": 9,
+        "experiments": [
+          {
+            "experiment_folder": "claude-3-haiku-20240307_humaneval_1754246217",
+            "pass_at_1_percentage": 74.39024390243902
+          },
+          {
+            "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754242316",
+            "pass_at_1_percentage": 0.0
+          },
+          {
+            "experiment_folder": "gpt-4o_humaneval_1754247437",
+            "pass_at_1_percentage": 88.41463414634147
+          },
+          {
+            "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754242505",
+            "pass_at_1_percentage": 0.0
+          },
+          {
+            "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754244326",
+            "pass_at_1_percentage": 96.34146341463415
+          },
+          {
+            "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754242067",
+            "pass_at_1_percentage": 0.0
+          },
+          {
+            "experiment_folder": "gpt-4o-mini_humaneval_1754247720",
+            "pass_at_1_percentage": 87.1951219512195
+          },
+          {
+            "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754242598",
+            "pass_at_1_percentage": 0.0
+          },
+          {
+            "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754242541",
+            "pass_at_1_percentage": 0.0
+          }
+        ]
+      },
+      "voyage_func": {
+        "average_pass_at_1": 37.94037940379404,
+        "experiment_count": 9,
+        "experiments": [
+          {
+            "experiment_folder": "claude-3-haiku-20240307_humaneval_1754246217",
+            "pass_at_1_percentage": 71.34146341463415
+          },
+          {
+            "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754242316",
+            "pass_at_1_percentage": 0.0
+          },
+          {
+            "experiment_folder": "gpt-4o_humaneval_1754247437",
+            "pass_at_1_percentage": 89.02439024390245
+          },
+          {
+            "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754242505",
+            "pass_at_1_percentage": 0.0
+          },
+          {
+            "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754244326",
+            "pass_at_1_percentage": 95.1219512195122
+          },
+          {
+            "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754242067",
+            "pass_at_1_percentage": 0.0
+          },
+          {
+            "experiment_folder": "gpt-4o-mini_humaneval_1754247720",
+            "pass_at_1_percentage": 85.97560975609755
+          },
+          {
+            "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754242598",
+            "pass_at_1_percentage": 0.0
+          },
+          {
+            "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754242541",
+            "pass_at_1_percentage": 0.0
+          }
+        ]
+      },
+      "reranked": {
+        "average_pass_at_1": 57.82520325203253,
+        "experiment_count": 6,
+        "experiments": [
+          {
+            "experiment_folder": "claude-3-haiku-20240307_humaneval_1754246217",
+            "pass_at_1_percentage": 73.78048780487805
+          },
+          {
+            "experiment_folder": "gpt-4o_humaneval_1754247437",
+            "pass_at_1_percentage": 89.63414634146342
+          },
+          {
+            "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754242505",
+            "pass_at_1_percentage": 0.0
+          },
+          {
+            "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754244326",
+            "pass_at_1_percentage": 95.73170731707317
+          },
+          {
+            "experiment_folder": "claude-sonnet-4-20250514_humaneval_1754242067",
+            "pass_at_1_percentage": 0.0
+          },
+          {
+            "experiment_folder": "gpt-4o-mini_humaneval_1754247720",
+            "pass_at_1_percentage": 87.8048780487805
+          }
+        ]
+      },
+      "voyage_emb": {
+        "average_pass_at_1": 85.97560975609755,
+        "experiment_count": 4,
+        "experiments": [
+          {
+            "experiment_folder": "gpt-4o-mini_humaneval_1757955653",
+            "pass_at_1_percentage": 85.36585365853658
+          },
+          {
+            "experiment_folder": "gpt-4o_humaneval_1757955726",
+            "pass_at_1_percentage": 89.63414634146342
+          },
+          {
+            "experiment_folder": "claude-sonnet-4-20250514_humaneval_1757955880",
+            "pass_at_1_percentage": 95.1219512195122
+          },
+          {
+            "experiment_folder": "claude-3-haiku-20240307_humaneval_1757955925",
+            "pass_at_1_percentage": 73.78048780487805
+          }
+        ]
+      }
+    }
+  }
+}

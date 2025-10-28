@@ -324,8 +324,9 @@ class AnthropicProvider(LLMProvider):
                     model=self.config.model_name,
                     max_tokens=self.config.max_tokens,
                     temperature=self.config.temperature,
-                    system=system_prompt,  # Use system parameter for Anthropic
-                    messages=[{"role": "user", "content": user_prompt}]
+                    system=[{"type": "text", "text": system_prompt, "cache_control": {"type": "ephemeral"}}],
+                    messages=[{"role": "user", "content": user_prompt}],
+                    
                 )
                 
                 end_time = time.time()
@@ -740,7 +741,8 @@ def load_augmented_data(augmentation_type: str, benchmark: str) -> Dict[str, Any
     file_mapping = {
         'voyage_func': f'src/data/augmented_problems/{benchmark}_function_wise_relevant_context.jsonl',
         'voyage_block': f'src/data/augmented_problems/{benchmark}_blockwise_relevant_context.jsonl',
-        'bm25': f'src/data/augmented_problems/bm25_relevant_context_{benchmark}.jsonl'
+        'bm25': f'src/data/augmented_problems/bm25_relevant_context_{benchmark}.jsonl',
+        'voyage_emb': f'src/data/augmented_problems/voyage_code_relevant_context_{benchmark}.jsonl'
     }
     
     if augmentation_type not in file_mapping:
@@ -757,6 +759,12 @@ def load_augmented_data(augmentation_type: str, benchmark: str) -> Dict[str, Any
             for line in f:
                 data = json.loads(line.strip())
                 task_id = data['task_id']
+                if isinstance(task_id, int):
+                    if benchmark == 'mbpp':
+                        task_id = f"MBPP/{task_id}"
+                    elif benchmark == 'humaneval':
+                        task_id = f"HumanEval/{task_id}"
+                
                 
                 # Format the augmented content
                 if augmentation_type == 'bm25':
@@ -768,6 +776,8 @@ def load_augmented_data(augmentation_type: str, benchmark: str) -> Dict[str, Any
                     # Handle case where content is a list of strings
                     if isinstance(content, list):
                         content = '\n\n'.join(content)
+                elif augmentation_type == 'voyage_emb':
+                    content = data.get('problem', '')
                 else:
                     # Voyage embeddings have similarity scores and content
                     problems = data.get('problem', [])
@@ -784,7 +794,6 @@ def load_augmented_data(augmentation_type: str, benchmark: str) -> Dict[str, Any
     except Exception as e:
         logging.error(f"Error loading augmented data from {file_path}: {e}")
         return {}
-    
     return augmented_data
 
 
@@ -944,7 +953,7 @@ def run_single_experiment(config: ExperimentConfig, augmentation_type: str) -> t
     else:
         raise ValueError(f"Unknown benchmark: {config.benchmark}")
     
-    # problems = {k: v for k, v in list(problems.items())[1:10]}
+    # problems = {k: v for k, v in list(problems.items())[:1]}
     
     # Load augmented data if needed
     augmented_data = {}
@@ -1301,12 +1310,33 @@ def load_mbpp_problems() -> Dict:
                 problems = {}
                 for idx, row in mbpp_df.iterrows():
                     task_id = f"MBPP/{row['task_id']}"  # Use the actual task_id from CSV
+                    
+                    # Parse test_list string to get individual test cases
+                    test_list_str = row.get('test_list', '')
+                    if test_list_str and test_list_str != 'nan':
+                        try:
+                            # Parse the string representation of the list
+                            import ast
+                            test_cases = ast.literal_eval(test_list_str)
+                            if isinstance(test_cases, list):
+                                # Format test cases for inclusion in prompt
+                                formatted_tests = '\n'.join(test_cases)
+                                # Create enhanced prompt with test examples
+                                enhanced_prompt = f"{row['text']}\n\nYour code should pass these tests:\n{formatted_tests}"
+                            else:
+                                enhanced_prompt = row['text']
+                        except (ValueError, SyntaxError):
+                            # If parsing fails, use original prompt
+                            enhanced_prompt = row['text']
+                    else:
+                        enhanced_prompt = row['text']
+                    
                     problems[task_id] = {
-                        'prompt': row['text'],
+                        'prompt': enhanced_prompt,  # Now includes test examples
                         'test': row.get('test_list', ''),
                         'solution': row.get('code', '')
                     }
-                logging.info(f"✅ Loaded {len(problems)} MBPP problems")
+                logging.info(f"✅ Loaded {len(problems)} MBPP problems with test examples included in prompts")
                 return problems
         except Exception as e:
             logging.debug(f"Failed to load MBPP from {csv_path}: {e}")
@@ -1367,6 +1397,8 @@ def perform_reranking(all_results: Dict[str, List[Dict]], config: ExperimentConf
         problems = read_problems()
     else:
         problems = load_mbpp_problems()
+        
+    
     
     # Prepare tasks for parallel processing
     tasks = []
@@ -1652,8 +1684,8 @@ def main():
     parser.add_argument('--benchmark', choices=['humaneval', 'mbpp'], default='humaneval',
                        help='Benchmark to use for evaluation')
     parser.add_argument('--augmentation-types', nargs='+', 
-                       choices=['no_rag', 'voyage_func', 'voyage_block', 'bm25'],
-                       default=['no_rag', 'voyage_func', 'voyage_block', 'bm25'],
+                       choices=['no_rag', 'voyage_func', 'voyage_block', 'bm25', 'voyage_emb'],
+                       default=['no_rag', 'voyage_func', 'voyage_block', 'bm25', 'voyage_emb'],
                        help='Augmentation types to test')
     parser.add_argument('--disable-reranking', action='store_true',
                        help='Disable solution re-ranking')

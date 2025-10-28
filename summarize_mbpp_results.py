@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Script to summarize HumanEval evaluation results.
-Analyzes all methods and augmentation types in the humaneval_results directory
+Script to summarize MBPP evaluation results.
+Analyzes all methods and augmentation types in the mbpp_results directory
 and calculates pass rates and syntax validity rates, outputting to CSV files.
 """
 
@@ -25,26 +25,118 @@ def load_jsonl_results(file_path: str) -> List[Dict]:
         return []
     return results
 
+def load_json_results(file_path: str) -> List[Dict]:
+    """Load results from a JSON file."""
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception as e:
+        print(f"Error reading {file_path}: {e}")
+        return []
+
+def calculate_pass_rate_from_individual_results(results: List[Dict]) -> Tuple[float, int, int]:
+    """Calculate pass rate from individual results with assertion_results."""
+    if not results:
+        return 0.0, 0, 0
+    
+    total_tasks = len(results)
+    passed_tasks = 0
+    
+    for result in results:
+        assertion_results = result.get('assertion_results', [])
+        if assertion_results:
+            # Task passes if all assertions pass
+            all_passed = all(ar.get('status') == 'PASSED' for ar in assertion_results)
+            if all_passed:
+                passed_tasks += 1
+    
+    pass_rate = (passed_tasks / total_tasks) * 100 if total_tasks > 0 else 0.0
+    return pass_rate, passed_tasks, total_tasks
+
+def calculate_pass_rate(results: List[Dict]) -> Tuple[float, int, int]:
+    """Calculate pass rate from results."""
+    if not results:
+        return 0.0, 0, 0
+    
+    total_tasks = len(results)
+    passed_tasks = sum(1 for result in results if result.get('passed', False))
+    pass_rate = (passed_tasks / total_tasks) * 100 if total_tasks > 0 else 0.0
+    
+    return pass_rate, passed_tasks, total_tasks
+
+def calculate_syntax_rate(results: List[Dict]) -> Tuple[float, int, int]:
+    """Calculate syntax validity rate from results."""
+    if not results:
+        return 0.0, 0, 0
+    
+    total_tasks = len(results)
+    syntax_valid_tasks = sum(1 for result in results if result.get('is_syntactically_valid', False))
+    syntax_rate = (syntax_valid_tasks / total_tasks) * 100 if total_tasks > 0 else 0.0
+    
+    return syntax_rate, syntax_valid_tasks, total_tasks
+
+def calculate_ideal_ranker_pass_rate(method_data: Dict) -> Tuple[float, int, int]:
+    """Calculate ideal ranker pass rate - upper bound if we could always pick the best result."""
+    # Methods to consider for ideal ranker (excluding reranked as it's already a ranker)
+    ranker_methods = ['no_rag', 'bm25', 'voyage_func', 'voyage_block', 'voyage_emb']
+    
+    # Get all individual results for each method
+    all_results = {}
+    total_tasks = 0
+    
+    for method in ranker_methods:
+        if method in method_data:
+            # We need to load the individual results again to get task-level data
+            # This is a bit inefficient but necessary for the ideal ranker calculation
+            all_results[method] = method_data[method].get('individual_results', [])
+            if not total_tasks:
+                total_tasks = method_data[method]['total']
+    
+    if not all_results or total_tasks == 0:
+        return 0.0, 0, 0
+    
+    # For ideal ranker, a task passes if ANY of the methods got it right
+    passed_tasks = 0
+    
+    # We'll need to track this by task_id, but since we don't have easy access to the
+    # individual results here, we'll approximate using the stored results
+    # This is a limitation - ideally we'd need to reload and compare task by task
+    
+    # For now, let's use a conservative approximation based on the maximum pass rate
+    # In reality, this should be calculated by loading all individual results and
+    # checking task by task, but that would require significant restructuring
+    
+    # Get the method with highest pass rate as a lower bound
+    max_passed = 0
+    for method in ranker_methods:
+        if method in method_data:
+            max_passed = max(max_passed, method_data[method]['passed'])
+    
+    # This is an approximation - the real ideal ranker would likely be higher
+    passed_tasks = max_passed
+    pass_rate = (passed_tasks / total_tasks) * 100 if total_tasks > 0 else 0.0
+    
+    return pass_rate, passed_tasks, total_tasks
+
 def calculate_ideal_ranker_from_files(method_dir: Path, ranker_methods: List[str]) -> Tuple[float, int, int]:
-    """Calculate ideal ranker pass rate by loading and comparing results files."""
+    """Calculate ideal ranker pass rate by loading and comparing individual results files."""
     all_method_results = {}
     
-    # Load results for each ranker method
+    # Load individual results for each ranker method
     for method in ranker_methods:
-        # For HumanEval, we use the _results.jsonl_results.jsonl files if they exist,
-        # otherwise fall back to _results.jsonl files
-        result_file = method_dir / f"{method}_results.jsonl_results.jsonl"
-        if not result_file.exists():
-            result_file = method_dir / f"{method}_results.jsonl"
-        
-        if result_file.exists():
-            results = load_jsonl_results(str(result_file))
+        individual_file = method_dir / f"{method}_individual_results.json"
+        if individual_file.exists():
+            results = load_json_results(str(individual_file))
             # Create a dict mapping task_id to whether it passed
             task_results = {}
             for result in results:
                 task_id = result.get('task_id')
-                passed = result.get('passed', False)
-                task_results[task_id] = passed
+                assertion_results = result.get('assertion_results', [])
+                if assertion_results:
+                    all_passed = all(ar.get('status') == 'PASSED' for ar in assertion_results)
+                    task_results[task_id] = all_passed
+                else:
+                    task_results[task_id] = False
             all_method_results[method] = task_results
     
     if not all_method_results:
@@ -76,40 +168,20 @@ def calculate_ideal_ranker_from_files(method_dir: Path, ranker_methods: List[str
     pass_rate = (passed_tasks / total_tasks) * 100 if total_tasks > 0 else 0.0
     return pass_rate, passed_tasks, total_tasks
 
-def calculate_pass_rate(results: List[Dict]) -> Tuple[float, int, int]:
-    """Calculate pass rate from results."""
-    if not results:
-        return 0.0, 0, 0
-    
-    total_tasks = len(results)
-    passed_tasks = sum(1 for result in results if result.get('passed', False))
-    pass_rate = (passed_tasks / total_tasks) * 100 if total_tasks > 0 else 0.0
-    
-    return pass_rate, passed_tasks, total_tasks
-
-def calculate_syntax_rate(results: List[Dict]) -> Tuple[float, int, int]:
-    """Calculate syntax validity rate from results."""
-    if not results:
-        return 0.0, 0, 0
-    
-    total_tasks = len(results)
-    syntax_valid_tasks = sum(1 for result in results if result.get('is_syntactically_valid', False))
-    syntax_rate = (syntax_valid_tasks / total_tasks) * 100 if total_tasks > 0 else 0.0
-    
-    return syntax_rate, syntax_valid_tasks, total_tasks
-
 def extract_method_name(folder_name: str) -> str:
     """Extract clean method name from folder name."""
     # Remove timestamp suffix
     parts = folder_name.split('_')
     if len(parts) >= 2 and parts[-1].isdigit():
-        return '_'.join(parts[:-2])  # Remove last two parts (humaneval and timestamp)
+        return '_'.join(parts[:-2])  # Remove last two parts (mbpp and timestamp)
     return folder_name
 
 def extract_augmentation_type(filename: str) -> str:
     """Extract augmentation type from filename."""
-    # Remove _results.jsonl_results.jsonl or _results.jsonl suffix
-    if filename.endswith('_results.jsonl_results.jsonl'):
+    # Remove _individual_results.json or _results.jsonl suffix
+    if filename.endswith('_individual_results.json'):
+        return filename.replace('_individual_results.json', '')
+    elif filename.endswith('_results.jsonl_results.jsonl'):
         return filename.replace('_results.jsonl_results.jsonl', '')
     elif filename.endswith('_results.jsonl'):
         return filename.replace('_results.jsonl', '')
@@ -130,8 +202,8 @@ def find_original_experiment_file(method_dir_name: str, augmentation_type: str) 
     return ""
 
 def main():
-    """Main function to analyze HumanEval results."""
-    results_dir = Path('humaneval_results')
+    """Main function to analyze MBPP results."""
+    results_dir = Path('mbpp_results')
     
     if not results_dir.exists():
         print(f"Error: {results_dir} directory not found!")
@@ -140,7 +212,7 @@ def main():
     # Dictionary to store results: {method: {augmentation_type: {pass_rate, syntax_rate, ...}}}
     summary_data = {}
     
-    print("Analyzing HumanEval results...")
+    print("Analyzing MBPP results...")
     print("=" * 50)
     
     # Methods to consider for ideal ranker calculation
@@ -156,36 +228,31 @@ def main():
         
         summary_data[method_name] = {}
         
-        # Find all *_results.jsonl files
-        result_files = []
+        # Find all *_individual_results.json files for pass rate calculation
+        individual_result_files = []
         for file_path in method_dir.iterdir():
-            if file_path.is_file() and file_path.name.endswith('_results.jsonl'):
-                # Prefer files ending with _results.jsonl_results.jsonl if they exist
-                if file_path.name.endswith('_results.jsonl_results.jsonl'):
-                    result_files.append(file_path)
-                elif not any(f.name == file_path.name + '_results.jsonl' for f in method_dir.iterdir()):
-                    # Only add simple _results.jsonl if no double suffix version exists
-                    result_files.append(file_path)
+            if file_path.is_file() and file_path.name.endswith('_individual_results.json'):
+                individual_result_files.append(file_path)
         
         # Process each augmentation type
-        for file_path in result_files:
+        for file_path in individual_result_files:
             augmentation_type = extract_augmentation_type(file_path.name)
             print(f"  - Processing {augmentation_type}...")
             
-            # Load and analyze pass rate results
-            pass_results = load_jsonl_results(str(file_path))
-            pass_rate, passed, total = calculate_pass_rate(pass_results)
+            # Load and analyze pass rate results from individual results
+            individual_results = load_json_results(str(file_path))
+            pass_rate, passed, total = calculate_pass_rate_from_individual_results(individual_results)
             
-            # Find and load original experiment file for syntax analysis
-            original_file = find_original_experiment_file(method_dir.name, augmentation_type)
+            # Find corresponding JSONL file for syntax analysis
+            syntax_file = method_dir / f"{augmentation_type}_results.jsonl"
             syntax_rate, syntax_valid, syntax_total = 0.0, 0, 0
             
-            if original_file:
-                print(f"    Found original file: {original_file}")
-                syntax_results = load_jsonl_results(original_file)
+            if syntax_file.exists():
+                print(f"    Found syntax file: {syntax_file}")
+                syntax_results = load_jsonl_results(str(syntax_file))
                 syntax_rate, syntax_valid, syntax_total = calculate_syntax_rate(syntax_results)
             else:
-                print(f"    Warning: Could not find original experiment file for {augmentation_type}")
+                print(f"    Warning: Could not find syntax file for {augmentation_type}")
                 # Use the same totals as pass results
                 syntax_total = total
             
@@ -268,7 +335,7 @@ def main():
     df = df[columns]
     
     # Save to CSV
-    output_file = 'humaneval_results_summary.csv'
+    output_file = 'mbpp_results_summary.csv'
     df.to_csv(output_file, index=False)
     
     print(f"\n" + "=" * 50)
@@ -292,7 +359,7 @@ def main():
         simple_rows.append(row)
     
     simple_df = pd.DataFrame(simple_rows)
-    simple_output_file = 'humaneval_results_summary_simple.csv'
+    simple_output_file = 'mbpp_results_summary_simple.csv'
     simple_df.to_csv(simple_output_file, index=False)
     print(f"Simplified summary saved to: {simple_output_file}")
     
@@ -325,8 +392,8 @@ def main():
     pass_df = pd.DataFrame(pass_only_rows)
     syntax_df = pd.DataFrame(syntax_only_rows)
     
-    pass_df.to_csv('humaneval_pass_rates_only.csv', index=False)
-    syntax_df.to_csv('humaneval_syntax_rates_only.csv', index=False)
+    pass_df.to_csv('mbpp_pass_rates_only.csv', index=False)
+    syntax_df.to_csv('mbpp_syntax_rates_only.csv', index=False)
     
     print(f"\nPass Rates Only:")
     print(pass_df.to_string(index=False))
@@ -334,8 +401,8 @@ def main():
     print(syntax_df.to_string(index=False))
     
     print(f"\nAdditional files created:")
-    print(f"- humaneval_pass_rates_only.csv")
-    print(f"- humaneval_syntax_rates_only.csv")
+    print(f"- mbpp_pass_rates_only.csv")
+    print(f"- mbpp_syntax_rates_only.csv")
 
 if __name__ == "__main__":
     main() 
