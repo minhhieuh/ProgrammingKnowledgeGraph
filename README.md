@@ -57,6 +57,14 @@ pip install -r requirements.txt
 cp .env.example .env      # then fill in ANTHROPIC / VOYAGE / OPENAI keys
 ```
 
+## Results data
+
+Pre-computed results — per-item pass/fail plus generated code for every model × benchmark × retrieval condition — ship as `results_data.zip` (the `results/` tree is not stored unpacked in git). Extract it before running the aggregation scripts:
+
+```bash
+unzip results_data.zip      # recreates results/{api_models,opensource,summary}/
+```
+
 ## Reproducing the results
 
 All commands run from the repo root.
