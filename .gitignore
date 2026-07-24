@@ -170,3 +170,4 @@ experiments/
 # humaneval_results/
 
 *.zip
+!results_data.zip
