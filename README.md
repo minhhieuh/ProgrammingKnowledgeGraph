@@ -39,8 +39,6 @@ Two experiment tracks share the same data/graph stages:
 └── logs/                     # evaluation run logs
 ```
 
-> **Layout notes:** the importable package stays `src/` (a top-level `code/` dir would shadow Python's stdlib `code` module). `MBPP/` stays at repo root because its `from MBPP.human_eval…` imports resolve from there. Run all commands from the repo root except the open-source pipeline, which is run from inside `opensource_pipeline/`.
-
 ## Quick start
 
 ### Prerequisites
@@ -83,12 +81,6 @@ python analysis/summarize_humaneval_results.py
 python analysis/summarize_mbpp_results.py
 python analysis/csv_to_latex_converter.py
 ```
-
-## Reproduction blockers (see `docs/ARTIFACT_INVENTORY.md`)
-- **Pruning code** is not in the package — pruning-on results exist, but pruning-off / context-length deltas can't be re-run.
-- **Tutorials (text-side) corpus** is missing — only the PythonAlpaca (code) corpus is included.
-- Retrieved contexts are logged as text only (no top-k scores).
-
 
 ## License
 MIT — see LICENSE.
