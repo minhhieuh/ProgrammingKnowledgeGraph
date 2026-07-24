@@ -2,8 +2,8 @@
 
 End-to-end pipeline as actually implemented in this repo. Two tracks share stages 1–4:
 
-- **Track A (open-source, `ICLR_PKG/`)** — local models on A100, `code_generation.py`.
-- **Track B (API models, root)** — Claude/GPT via `src/experiments/experiment_runner.py`.
+- **Track A (open-source, `opensource_pipeline/`)** — local models on A100, `code_generation.py`.
+- **Track B (API models, `src/`)** — Claude/GPT via `src/experiments/experiment_runner.py`.
 
 Stages 1–3 run **once** (offline, build retrieval assets). Stages 4–7 run **per model × benchmark × condition**.
 
@@ -13,18 +13,18 @@ Stages 1–3 run **once** (offline, build retrieval assets). Stages 4–7 run **
 
 | Source | Path | Size |
 |--------|------|------|
-| PythonAlpaca (code-centric, ~143K QA pairs → 115K functions) | `ICLR_PKG/dataset/python_alpaca.csv` | 281 MB |
-| Extracted Python functions | `ICLR_PKG/dataset/python_codes.csv` | 40 MB |
+| PythonAlpaca (code-centric, ~143K QA pairs → 115K functions) | `data/corpora/python_alpaca.csv` | 268 MB |
+| Extracted Python functions | `data/corpora/python_codes.csv` | 40 MB |
 | Tutorials (text-centric, 76.6K tutorials) | **MISSING** | — |
 
-Code path: `knowledge_programming_graph.py: main()` reads `./datasets/python_alpaca.csv`, applies
+Code path: `knowledge_programming_graph.py: main()` reads `data/corpora/python_alpaca.csv`, applies
 `FunctionAnalyzer.extract_python_code` then `.get_function_blocks` to pull function blocks from the `output` column.
 
 ---
 
 ## Stage 2 — Build the PKG (graph construction)
 
-Driver: `ICLR_PKG/knowledge_programming_graph.py` (also `src/core/`). Loops the corpus in chunks of 1000.
+Driver: `opensource_pipeline/knowledge_programming_graph.py` (also `src/core/`). Loops the corpus in chunks of 1000.
 
 Per function:
 1. `analyzer.get_function_name(code)` — function name.
@@ -90,13 +90,13 @@ helper code 1:
 End of helper section.
 ```
 
-That combined prompt goes to the generator. This is exactly what got cached into `augmented_problems/*.jsonl`.
+That combined prompt goes to the generator. This is exactly what got cached into `data/augmented_problems/*.jsonl`.
 
 > **Caveat:** 3.4–3.5 are the paper's *specification* (`docs/Implementation.md`), **not** verified against code — the pruning implementation isn't in this repo. Only post-pruning output text is on disk. So the exact candidate strategy (one branch at a time? all subsets? greedy iterative?) can't be confirmed from what's here.
 
 ### 3.7 Cached outputs
 
-Results cached to `augmented_problems/` — **retrieval never re-runs during generation**:
+Results cached to `data/augmented_problems/` (API pipeline) and `opensource_pipeline/augmented_problems/` (open-source pipeline) — **retrieval never re-runs during generation**:
 
 | Condition | File | What it searches |
 |-----------|------|------------------|
@@ -118,6 +118,7 @@ Fixed decoding both tracks: **greedy, temperature 0, max_new_tokens 512, 1 sampl
 
 ### Track A — open-source
 ```bash
+cd opensource_pipeline      # flat scripts run from here
 python code_generation.py \
   --model_type {codellama_7b|codellama_13b|codellama_34b|starcoder2_7b|llama3_8b|deepseekcoder_7b} \
   --dest_path <out>.jsonl
@@ -139,8 +140,8 @@ Output schema both tracks: `{task_id, completion}`.
 
 ## Stage 5 — Evaluate (pass/fail per item)
 
-- HumanEval: `run_humaneval_evaluation.py` → `evaluate_functional_correctness`
-- MBPP: `mbpp_eval.py` → `MBPP.human_eval.evaluation.evaluate_functional_correctness`
+- HumanEval: `analysis/run_humaneval_evaluation.py` → `evaluate_functional_correctness`
+- MBPP: `analysis/mbpp_eval.py` → `MBPP.human_eval.evaluation.evaluate_functional_correctness`
 
 Produces `<file>.jsonl_results.jsonl` = `{task_id, completion, result, passed}` — **the per-item record**. MBPP also emits `*_individual_results.json` with `assertion_results`.
 
@@ -148,9 +149,10 @@ Produces `<file>.jsonl_results.jsonl` = `{task_id, completion, result, passed}` 
 
 ## Stage 6 — Re-rank across conditions
 
-`reranker.py` — picks one final answer from the 4 candidates (norag, bm25, bwrag, fwrag) for each task.
+`opensource_pipeline/reranker.py` (mirrored in `src/core/reranker.py`) — picks one final answer from the 4 candidates (norag, bm25, bwrag, fwrag) for each task.
 
 ```bash
+cd opensource_pipeline
 python reranker.py --evaluation {human_eval|mbpp} \
   --norag_path <> --bwrag_path <> --fwrag_path <> --bm25rag_path <> \
   --output_path <>
@@ -166,7 +168,7 @@ python reranker.py --evaluation {human_eval|mbpp} \
 
 ## Stage 7 — Aggregate
 
-`summarize_humaneval_results.py`, `summarize_mbpp_results.py`, `csv_to_latex_converter.py` → `*_results_summary.csv`, `*_pass_rates_only.csv`, `*_latex_table.tex`.
+`analysis/summarize_humaneval_results.py`, `analysis/summarize_mbpp_results.py`, `analysis/csv_to_latex_converter.py` → `results/summary/{*_results_summary.csv, *_pass_rates_only.csv, *_latex_table.tex}`.
 
 ---
 
@@ -192,4 +194,4 @@ python reranker.py --evaluation {human_eval|mbpp} \
 
 ## Security note
 
-`ICLR_PKG/reranker.py:133` contains a **hardcoded VoyageAI API key** in `init_voyageai_embedder()`. Rotate that key and move it to an environment variable before this folder is shared or published.
+The VoyageAI key was previously **hardcoded** in `reranker.py: init_voyageai_embedder()`. It is now read from the `VOYAGE_API_KEY` env var (see `.env.example`), and the leaked value was purged from git history. **Rotate the old key anyway** — it was public before the history rewrite.
