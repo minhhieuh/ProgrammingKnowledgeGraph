@@ -1,0 +1,1 @@
+python -m src.experiments.experiment_runner --model-name gpt-4o-mini --model-type openai --benchmark mbpp --augmentation-types voyage_emb --verbose

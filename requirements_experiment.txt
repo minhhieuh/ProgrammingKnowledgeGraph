@@ -1,0 +1,23 @@
+# Core dependencies from original project
+human-eval==1.0.3
+voyageai==0.2.3
+pandas==2.2.2
+astor==0.8.1
+numpy==1.26.4
+tqdm>=4.64.0
+
+# LLM provider dependencies
+# For Anthropic Claude
+anthropic>=0.25.0
+
+# For OpenAI GPT models
+openai>=1.0.0
+
+# Development and testing dependencies (optional)
+pytest>=7.0.0
+black>=22.0.0
+flake8>=5.0.0
+
+# Jupyter notebook support (optional)
+jupyter>=1.0.0
+ipykernel>=6.0.0 
